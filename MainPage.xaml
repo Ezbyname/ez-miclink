@@ -1,0 +1,428 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.MainPage">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0A0E27" Offset="0.0" />
+            <GradientStop Color="#1A1A3E" Offset="0.3" />
+            <GradientStop Color="#2D2D58" Offset="0.7" />
+            <GradientStop Color="#1A1A3E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid x:Name="RootGrid" Padding="20">
+
+        <!-- Main Content -->
+        <ScrollView>
+            <VerticalStackLayout Spacing="30">
+
+                <!-- Header -->
+                <Grid Margin="0,20,0,0">
+                    <!-- App Title - Centered -->
+                    <Label Text="E-z MicLink"
+                           FontSize="32"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center" />
+
+                    <!-- Home text (top left) -->
+                    <Label Text="Home"
+                           FontSize="16"
+                           TextColor="#9999AA"
+                           HorizontalOptions="Start"
+                           VerticalOptions="Center"
+                           Margin="10,0,0,0" />
+                </Grid>
+
+                <!-- Scan Button -->
+                <Border x:Name="ScanButton"
+                        StrokeThickness="0"
+                        BackgroundColor="Transparent"
+                        Margin="30,40,30,0"
+                        InputTransparent="False">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="28" />
+                    </Border.StrokeShape>
+                    <Border.Background>
+                        <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                            <GradientStop Color="#5B8FFF" Offset="0.0" />
+                            <GradientStop Color="#7B6BFF" Offset="1.0" />
+                        </LinearGradientBrush>
+                    </Border.Background>
+                    <Border.Shadow>
+                        <Shadow Brush="#5B8FFF"
+                                Offset="0,8"
+                                Radius="30"
+                                Opacity="0.5" />
+                    </Border.Shadow>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnScanClicked" />
+                    </Border.GestureRecognizers>
+
+                    <Grid Padding="0,18">
+                        <HorizontalStackLayout HorizontalOptions="Center"
+                                             Spacing="12">
+                            <Label Text="Scan for Devices"
+                                   FontSize="20"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   VerticalOptions="Center" />
+                            <Label Text="🔍"
+                                   FontSize="24"
+                                   VerticalOptions="Center" />
+                        </HorizontalStackLayout>
+
+                        <!-- Loading indicator (hidden by default) -->
+                        <ActivityIndicator x:Name="ScanningIndicator"
+                                         IsRunning="False"
+                                         IsVisible="False"
+                                         Color="White"
+                                         WidthRequest="24"
+                                         HeightRequest="24"
+                                         HorizontalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Main Card Area -->
+                <Border x:Name="MainCard"
+                        BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Margin="30,30,30,0"
+                        Padding="0"
+                        IsVisible="False">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="28" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow Brush="#000000"
+                                Offset="0,8"
+                                Radius="20"
+                                Opacity="0.3" />
+                    </Border.Shadow>
+
+                    <VerticalStackLayout Spacing="0">
+
+                        <!-- Device Info Header -->
+                        <Grid x:Name="DeviceInfoSection"
+                              Padding="30,30,30,20"
+                              BackgroundColor="Transparent"
+                              IsVisible="False">
+                            <VerticalStackLayout Spacing="10">
+                                <Label x:Name="DeviceNameLabel"
+                                       Text="JBL LIVE FREE 2 TWS"
+                                       FontSize="22"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center" />
+                                <Label x:Name="DeviceStatusLabel"
+                                       Text="Ready to connect"
+                                       FontSize="15"
+                                       TextColor="#8E8E93"
+                                       HorizontalOptions="Center" />
+                            </VerticalStackLayout>
+                        </Grid>
+
+                        <!-- Audio Controls (when connected) -->
+                        <VerticalStackLayout x:Name="AudioControlsSection"
+                                           Padding="30,10,30,20"
+                                           Spacing="20"
+                                           IsVisible="False">
+
+                            <!-- Microphone Control -->
+                            <VerticalStackLayout Spacing="15">
+                                <Label Text="🎤 Microphone"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center" />
+
+                                <!-- Start/Stop Buttons -->
+                                <Grid ColumnDefinitions="*,*" ColumnSpacing="12">
+                                    <Border Grid.Column="0"
+                                            x:Name="StartAudioBtn"
+                                            StrokeThickness="0"
+                                            BackgroundColor="Transparent">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="18" />
+                                        </Border.StrokeShape>
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#4CAF50" Offset="0.0" />
+                                                <GradientStop Color="#45A049" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnStartAudioClicked" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="▶ Start"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="White"
+                                               HorizontalOptions="Center"
+                                               Padding="0,14" />
+                                    </Border>
+
+                                    <Border Grid.Column="1"
+                                            x:Name="StopAudioBtn"
+                                            StrokeThickness="0"
+                                            BackgroundColor="Transparent"
+                                            IsVisible="False">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="18" />
+                                        </Border.StrokeShape>
+                                        <Border.Background>
+                                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                                <GradientStop Color="#FF5252" Offset="0.0" />
+                                                <GradientStop Color="#E53935" Offset="1.0" />
+                                            </LinearGradientBrush>
+                                        </Border.Background>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnStopAudioClicked" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="⏹ Stop"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="White"
+                                               HorizontalOptions="Center"
+                                               Padding="0,14" />
+                                    </Border>
+                                </Grid>
+                            </VerticalStackLayout>
+
+                            <!-- Volume Control -->
+                            <VerticalStackLayout Spacing="10">
+                                <Grid ColumnDefinitions="*,Auto" ColumnSpacing="10">
+                                    <Label Text="🔊 Volume"
+                                           FontSize="15"
+                                           FontAttributes="Bold"
+                                           TextColor="White"
+                                           VerticalOptions="Center" />
+                                    <Label x:Name="VolumeLabel"
+                                           Grid.Column="1"
+                                           Text="100%"
+                                           FontSize="15"
+                                           FontAttributes="Bold"
+                                           TextColor="#5B8FFF"
+                                           VerticalOptions="Center" />
+                                </Grid>
+
+                                <Slider x:Name="VolumeSlider"
+                                        Minimum="50"
+                                        Maximum="200"
+                                        Value="100"
+                                        ValueChanged="OnVolumeChanged"
+                                        MinimumTrackColor="#5B8FFF"
+                                        MaximumTrackColor="#444"
+                                        ThumbColor="#5B8FFF" />
+                            </VerticalStackLayout>
+
+                            <!-- Navigation Buttons -->
+                            <Grid ColumnDefinitions="*,*" ColumnSpacing="12" Margin="0,10,0,0">
+                                <Border Grid.Column="0"
+                                        Stroke="#5B8FFF"
+                                        StrokeThickness="2"
+                                        BackgroundColor="Transparent">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnVisualizerClicked" />
+                                    </Border.GestureRecognizers>
+                                    <Label Text="📊 Visualizer"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="#5B8FFF"
+                                           HorizontalOptions="Center"
+                                           Padding="0,12" />
+                                </Border>
+
+                                <Border Grid.Column="1"
+                                        Stroke="#7B6BFF"
+                                        StrokeThickness="2"
+                                        BackgroundColor="Transparent">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="18" />
+                                    </Border.StrokeShape>
+                                    <Border.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnEffectsClicked" />
+                                    </Border.GestureRecognizers>
+                                    <Label Text="🎭 Effects"
+                                           FontSize="14"
+                                           FontAttributes="Bold"
+                                           TextColor="#7B6BFF"
+                                           HorizontalOptions="Center"
+                                           Padding="0,12" />
+                                </Border>
+                            </Grid>
+
+                            <!-- Disconnect Button -->
+                            <Border Stroke="#FF5252"
+                                    StrokeThickness="1.5"
+                                    BackgroundColor="Transparent"
+                                    Margin="0,10,0,0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="18" />
+                                </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnDisconnectClicked" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Disconnect"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       TextColor="#FF5252"
+                                       HorizontalOptions="Center"
+                                       Padding="0,12" />
+                            </Border>
+
+                        </VerticalStackLayout>
+
+                        <!-- Message Section -->
+                        <VerticalStackLayout x:Name="MessageSection"
+                                           Padding="24,0,24,20"
+                                           Spacing="16"
+                                           IsVisible="False">
+
+                            <Label x:Name="MessageLabel"
+                                   Text="Make sure the device is powered on and in pairing mode."
+                                   FontSize="14"
+                                   TextColor="#CCCCCC"
+                                   HorizontalTextAlignment="Center"
+                                   LineHeight="1.4" />
+
+                            <!-- Bullet Points -->
+                            <VerticalStackLayout x:Name="BulletPointsContainer"
+                                               Spacing="10"
+                                               IsVisible="False" />
+                        </VerticalStackLayout>
+
+                        <!-- Action Buttons -->
+                        <Grid x:Name="ActionButtonsSection"
+                              Padding="30,10,30,30"
+                              ColumnDefinitions="*,*"
+                              ColumnSpacing="12"
+                              RowDefinitions="Auto,Auto"
+                              RowSpacing="12"
+                              IsVisible="False">
+
+                            <!-- Primary Action Button (spans 2 columns by default) -->
+                            <Border x:Name="PrimaryActionBorder"
+                                    Grid.Row="0"
+                                    Grid.Column="0"
+                                    Grid.ColumnSpan="2"
+                                    StrokeThickness="0"
+                                    BackgroundColor="Transparent">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="22" />
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#5B8FFF" Offset="0.0" />
+                                        <GradientStop Color="#7B6BFF" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Shadow>
+                                    <Shadow Brush="#5B8FFF"
+                                            Offset="0,6"
+                                            Radius="20"
+                                            Opacity="0.5" />
+                                </Border.Shadow>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPrimaryActionClicked" />
+                                </Border.GestureRecognizers>
+
+                                <Label x:Name="PrimaryActionLabel"
+                                       Text="Connect"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       Padding="0,18" />
+                            </Border>
+
+                            <!-- Secondary Action Button -->
+                            <Border x:Name="SecondaryActionBorder"
+                                    Grid.Row="1"
+                                    Grid.Column="0"
+                                    Grid.ColumnSpan="2"
+                                    StrokeThickness="1.5"
+                                    Stroke="#4A90E2"
+                                    BackgroundColor="Transparent"
+                                    IsVisible="False">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="16" />
+                                </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnSecondaryActionClicked" />
+                                </Border.GestureRecognizers>
+
+                                <Label x:Name="SecondaryActionLabel"
+                                       Text="Troubleshoot"
+                                       FontSize="16"
+                                       FontAttributes="Bold"
+                                       TextColor="#4A90E2"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       Padding="0,16" />
+                            </Border>
+                        </Grid>
+
+                    </VerticalStackLayout>
+                </Border>
+
+                <!-- Device List (shows after scanning) -->
+                <VerticalStackLayout x:Name="DeviceListSection"
+                                   Spacing="12"
+                                   IsVisible="False"
+                                   Margin="0,10,0,0">
+
+                    <Label Text="Available Devices"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#CCCCCC"
+                           Margin="10,0,0,10" />
+
+                    <CollectionView x:Name="DeviceCollectionView"
+                                  SelectionMode="Single"
+                                  SelectionChanged="OnDeviceSelected">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BackgroundColor="#1E1E38"
+                                       Stroke="#4A90E280"
+                                       StrokeThickness="1"
+                                       Padding="16"
+                                       Margin="0,0,0,8">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="12" />
+                                    </Border.StrokeShape>
+                                    <Grid ColumnDefinitions="Auto,*">
+                                        <Label Text="🔵"
+                                               FontSize="28"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0" />
+                                        <VerticalStackLayout Grid.Column="1"
+                                                           Spacing="4">
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="White" />
+                                            <Label Text="{Binding Address}"
+                                                   FontSize="12"
+                                                   TextColor="#8E8E93" />
+                                        </VerticalStackLayout>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+    </Grid>
+</ContentPage>

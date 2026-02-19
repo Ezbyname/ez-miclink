@@ -1,0 +1,322 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.MainPage">
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0F0F1E" Offset="0.0" />
+            <GradientStop Color="#1A1A2E" Offset="0.5" />
+            <GradientStop Color="#0F0F1E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <Grid x:Name="RootGrid">
+        <!-- Main Content -->
+        <ScrollView>
+            <VerticalStackLayout Padding="20" Spacing="20">
+
+                <!-- Header with Home Button -->
+                <Grid Margin="0,20,0,30">
+                    <Label Text="E-z MicLink"
+                           FontSize="32"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnHomeClicked" />
+                        </Label.GestureRecognizers>
+                    </Label>
+
+                    <!-- Home Icon (visible when connected) -->
+                    <Label x:Name="HomeIcon"
+                           Text="🏠"
+                           FontSize="24"
+                           TextColor="#4A90E2"
+                           HorizontalOptions="Start"
+                           VerticalOptions="Center"
+                           IsVisible="False"
+                           Margin="10,0,0,0">
+                        <Label.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnHomeClicked" />
+                        </Label.GestureRecognizers>
+                    </Label>
+                </Grid>
+
+                <!-- Device List Section (Initially Visible) -->
+                <VerticalStackLayout x:Name="DeviceListSection" Spacing="15">
+
+                    <!-- Scan Button -->
+                    <Button x:Name="ScanBtn"
+                            Text="🔍 Scan for Devices"
+                            Clicked="OnScanClicked"
+                            BackgroundColor="#4A90E2"
+                            TextColor="White"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            CornerRadius="25"
+                            HeightRequest="60"
+                            HorizontalOptions="Fill" />
+
+                    <!-- Diagnostics and Logs Buttons -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="10">
+                        <Button x:Name="DiagnosticsBtn"
+                                Grid.Column="0"
+                                Text="🔧 Diagnostics"
+                                Clicked="OnDiagnosticsClicked"
+                                BackgroundColor="#FF9800"
+                                TextColor="White"
+                                FontSize="14"
+                                CornerRadius="20"
+                                HeightRequest="50"
+                                HorizontalOptions="Fill" />
+
+                        <Button x:Name="ViewLogsBtn"
+                                Grid.Column="1"
+                                Text="📋 View Logs"
+                                Clicked="OnViewLogsClicked"
+                                BackgroundColor="#9C27B0"
+                                TextColor="White"
+                                FontSize="14"
+                                CornerRadius="20"
+                                HeightRequest="50"
+                                HorizontalOptions="Fill" />
+                    </Grid>
+
+                    <!-- Device List -->
+                    <CollectionView x:Name="DeviceCollectionView"
+                                    IsVisible="False"
+                                    SelectionMode="None">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Frame BackgroundColor="#2D2D44"
+                                       BorderColor="#4A90E2"
+                                       CornerRadius="15"
+                                       Padding="15"
+                                       Margin="0,5"
+                                       HasShadow="True">
+                                    <Frame.GestureRecognizers>
+                                        <TapGestureRecognizer Tapped="OnDeviceCardTapped" />
+                                    </Frame.GestureRecognizers>
+                                    <Grid ColumnDefinitions="60,*,Auto">
+                                        <!-- Bluetooth Icon -->
+                                        <Frame Grid.Column="0"
+                                               BackgroundColor="#4A90E2"
+                                               CornerRadius="30"
+                                               Padding="0"
+                                               HeightRequest="50"
+                                               WidthRequest="50"
+                                               HasShadow="False">
+                                            <Label Text="🔊"
+                                                   FontSize="28"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Frame>
+
+                                        <!-- Device Info -->
+                                        <VerticalStackLayout Grid.Column="1"
+                                                           VerticalOptions="Center"
+                                                           Padding="10,0">
+                                            <Label Text="{Binding Name}"
+                                                   TextColor="White"
+                                                   FontSize="18"
+                                                   FontAttributes="Bold" />
+                                            <Label Text="{Binding Address}"
+                                                   TextColor="#8E8E93"
+                                                   FontSize="12" />
+                                        </VerticalStackLayout>
+
+                                        <!-- Paired Badge -->
+                                        <Label Grid.Column="2"
+                                               Text="Paired"
+                                               IsVisible="{Binding IsPaired}"
+                                               TextColor="#4CAF50"
+                                               FontSize="12"
+                                               VerticalOptions="Center" />
+                                    </Grid>
+                                </Frame>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+
+                    <!-- Connect Button -->
+                    <Button x:Name="ConnectBtn"
+                            Text="Connect to Device"
+                            Clicked="OnConnectClicked"
+                            IsVisible="False"
+                            BackgroundColor="#4CAF50"
+                            TextColor="White"
+                            FontSize="18"
+                            FontAttributes="Bold"
+                            CornerRadius="25"
+                            HeightRequest="60"
+                            HorizontalOptions="Fill" />
+                </VerticalStackLayout>
+
+                <!-- Connected View (Initially Hidden) - Compact Design -->
+                <VerticalStackLayout x:Name="ConnectedSection"
+                                    IsVisible="False"
+                                    Spacing="15">
+
+                    <!-- Compact Connection Status Bar -->
+                    <Frame BackgroundColor="#2D2D44"
+                           BorderColor="#4CAF50"
+                           CornerRadius="15"
+                           Padding="12"
+                           HasShadow="True">
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+                            <!-- Connected Icon -->
+                            <Label Grid.Column="0"
+                                   Text="✓"
+                                   TextColor="#4CAF50"
+                                   FontSize="20"
+                                   FontAttributes="Bold"
+                                   VerticalOptions="Center" />
+
+                            <!-- Device Name -->
+                            <VerticalStackLayout Grid.Column="1" VerticalOptions="Center">
+                                <Label Text="Connected to"
+                                       TextColor="#8E8E93"
+                                       FontSize="11" />
+                                <Label x:Name="ConnectedDeviceLabel"
+                                       Text="Device Name"
+                                       TextColor="White"
+                                       FontSize="14"
+                                       FontAttributes="Bold" />
+                            </VerticalStackLayout>
+
+                            <!-- Disconnect Button -->
+                            <Button Grid.Column="2"
+                                    x:Name="DisconnectBtn"
+                                    Text="Disconnect"
+                                    Clicked="OnDisconnectClicked"
+                                    BackgroundColor="#FF5252"
+                                    TextColor="White"
+                                    FontSize="11"
+                                    CornerRadius="12"
+                                    HeightRequest="35"
+                                    WidthRequest="90"
+                                    Padding="0"
+                                    VerticalOptions="Center" />
+                        </Grid>
+                    </Frame>
+
+                    <!-- Audio Controls Card -->
+                    <Frame BackgroundColor="#2D2D44"
+                           CornerRadius="15"
+                           Padding="15"
+                           HasShadow="True">
+                        <VerticalStackLayout Spacing="12">
+
+                            <!-- Microphone Status with Animation -->
+                            <Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+                                <!-- Animated Mic Icon -->
+                                <Grid Grid.Column="0"
+                                      HeightRequest="50"
+                                      WidthRequest="50"
+                                      VerticalOptions="Center">
+                                    <BoxView x:Name="OuterCircle"
+                                             BackgroundColor="#4A90E2"
+                                             CornerRadius="25"
+                                             Opacity="0.2"
+                                             WidthRequest="50"
+                                             HeightRequest="50" />
+                                    <Label Text="🎤"
+                                           FontSize="24"
+                                           HorizontalOptions="Center"
+                                           VerticalOptions="Center" />
+                                </Grid>
+
+                                <!-- Status and Start/Stop Button -->
+                                <VerticalStackLayout Grid.Column="1" Spacing="5">
+                                    <Label x:Name="AudioStatusLabel"
+                                           Text="Ready to amplify"
+                                           TextColor="#8E8E93"
+                                           FontSize="12" />
+
+                                    <Grid ColumnDefinitions="*,*" ColumnSpacing="8">
+                                        <Button Grid.Column="0"
+                                                x:Name="StartAudioBtn"
+                                                Text="▶ Start"
+                                                Clicked="OnStartAudioClicked"
+                                                BackgroundColor="#4CAF50"
+                                                TextColor="White"
+                                                FontSize="13"
+                                                FontAttributes="Bold"
+                                                CornerRadius="15"
+                                                HeightRequest="40"
+                                                Padding="0" />
+
+                                        <Button Grid.Column="1"
+                                                x:Name="StopAudioBtn"
+                                                Text="⏹ Stop"
+                                                Clicked="OnStopAudioClicked"
+                                                IsVisible="False"
+                                                BackgroundColor="#FF5252"
+                                                TextColor="White"
+                                                FontSize="13"
+                                                FontAttributes="Bold"
+                                                CornerRadius="15"
+                                                HeightRequest="40"
+                                                Padding="0" />
+                                    </Grid>
+                                </VerticalStackLayout>
+                            </Grid>
+
+                            <!-- Volume/Gain Control -->
+                            <Grid RowDefinitions="Auto,Auto,Auto" RowSpacing="5">
+                                <Grid Grid.Row="0" ColumnDefinitions="*,Auto" ColumnSpacing="8">
+                                    <Label Text="Microphone Gain"
+                                           TextColor="White"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           VerticalOptions="Center" />
+                                    <Label x:Name="VolumeLabel"
+                                           Grid.Column="1"
+                                           Text="100%"
+                                           TextColor="#4A90E2"
+                                           FontSize="13"
+                                           FontAttributes="Bold"
+                                           VerticalOptions="Center" />
+                                </Grid>
+
+                                <Slider Grid.Row="1"
+                                        x:Name="VolumeSlider"
+                                        Minimum="50"
+                                        Maximum="200"
+                                        Value="100"
+                                        ValueChanged="OnVolumeChanged"
+                                        MinimumTrackColor="#4A90E2"
+                                        MaximumTrackColor="#444"
+                                        ThumbColor="#4A90E2" />
+
+                                <Grid Grid.Row="2" ColumnDefinitions="*,*,*" ColumnSpacing="5">
+                                    <Label Text="50% (Quiet)"
+                                           FontSize="10"
+                                           TextColor="#666"
+                                           HorizontalOptions="Start" />
+                                    <Label Text="100% (Normal)"
+                                           Grid.Column="1"
+                                           FontSize="10"
+                                           TextColor="#666"
+                                           HorizontalOptions="Center" />
+                                    <Label Text="200% (Loud)"
+                                           Grid.Column="2"
+                                           FontSize="10"
+                                           TextColor="#666"
+                                           HorizontalOptions="End" />
+                                </Grid>
+                            </Grid>
+
+                        </VerticalStackLayout>
+                    </Frame>
+                </VerticalStackLayout>
+
+            </VerticalStackLayout>
+        </ScrollView>
+
+        <!-- Hidden Picker for compatibility -->
+        <Picker x:Name="DevicePicker"
+                IsVisible="False" />
+    </Grid>
+
+</ContentPage>

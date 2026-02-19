@@ -1,0 +1,504 @@
+﻿using BluetoothMicrophoneApp.Services;
+using BluetoothMicrophoneApp.UI;
+
+namespace BluetoothMicrophoneApp;
+
+public partial class MainPage : ContentPage
+{
+	private readonly IBluetoothService _bluetoothService;
+	private readonly IAudioService _audioService;
+	private readonly IConnectivityDiagnostics _diagnostics;
+	private List<BluetoothDevice> _availableDevices = new();
+	private BluetoothDevice? _selectedDevice;
+	private bool _isAnimating;
+	private IDispatcherTimer? _autoScanTimer;
+	private Frame? _selectedDeviceFrame;
+	private float _currentGain = 1.0f; // 100% = 1.0x gain
+
+	public MainPage(IBluetoothService bluetoothService, IAudioService audioService, IConnectivityDiagnostics diagnostics)
+	{
+		InitializeComponent();
+
+		_bluetoothService = bluetoothService;
+		_audioService = audioService;
+		_diagnostics = diagnostics;
+
+		_bluetoothService.DeviceConnected += OnDeviceConnected;
+		_bluetoothService.DeviceDisconnected += OnDeviceDisconnected;
+		_audioService.StatusChanged += OnAudioStatusChanged;
+		_diagnostics.ConnectivityIssueDetected += OnConnectivityIssue;
+
+		// Initialize DialogService with root grid
+		DialogService.Initialize(RootGrid);
+
+		RequestPermissions();
+		StartAutoScan();
+	}
+
+	private void StartAutoScan()
+	{
+		// Create timer for auto-scan every 30 seconds
+		_autoScanTimer = Dispatcher.CreateTimer();
+		_autoScanTimer.Interval = TimeSpan.FromSeconds(30);
+		_autoScanTimer.Tick += async (s, e) =>
+		{
+			if (DeviceListSection.IsVisible && !_bluetoothService.IsConnected)
+			{
+				await AutoScanDevices();
+			}
+		};
+		_autoScanTimer.Start();
+	}
+
+	private async Task AutoScanDevices()
+	{
+		try
+		{
+			System.Diagnostics.Debug.WriteLine("Auto-scanning for devices...");
+			var devices = await _bluetoothService.ScanForDevicesAsync();
+
+			// Update device list on main thread
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				_availableDevices = devices;
+				DeviceCollectionView.ItemsSource = null;
+				DeviceCollectionView.ItemsSource = _availableDevices;
+
+				if (_availableDevices.Any())
+				{
+					DeviceCollectionView.IsVisible = true;
+				}
+
+				System.Diagnostics.Debug.WriteLine($"Auto-scan found {devices.Count} devices");
+			});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"Auto-scan error: {ex.Message}");
+		}
+	}
+
+	private async void RequestPermissions()
+	{
+		await Permissions.RequestAsync<Permissions.Bluetooth>();
+		await Permissions.RequestAsync<Permissions.Microphone>();
+	}
+
+	private async void OnScanClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			Services.DebugLogger.Log("Manual scan initiated");
+
+			ScanBtn.IsEnabled = false;
+			ScanBtn.Text = "🔍 Scanning...";
+
+			// Clear previous selection
+			if (_selectedDeviceFrame != null)
+			{
+				_selectedDeviceFrame.BorderColor = Color.FromArgb("#4A90E2");
+				_selectedDeviceFrame.BackgroundColor = Color.FromArgb("#2D2D44");
+				_selectedDeviceFrame = null;
+			}
+			_selectedDevice = null;
+			ConnectBtn.IsVisible = false;
+
+			_availableDevices = await _bluetoothService.ScanForDevicesAsync();
+
+			Services.DebugLogger.Log($"Scan completed: Found {_availableDevices.Count} devices");
+
+			if (_availableDevices.Any())
+			{
+				// Refresh the collection view
+				DeviceCollectionView.ItemsSource = null;
+				DeviceCollectionView.ItemsSource = _availableDevices;
+				DeviceCollectionView.IsVisible = true;
+
+				// Show message
+				await DialogService.ShowDevicesFoundAsync(_availableDevices.Count);
+			}
+			else
+			{
+				DeviceCollectionView.IsVisible = false;
+				await DialogService.ShowNoDevicesAsync();
+			}
+		}
+		catch (Exception ex)
+		{
+			Services.DebugLogger.Log($"Scan error: {ex.Message}");
+			await DialogService.ShowErrorAsync("Scan Error", $"Failed to scan for devices.\n\n{ex.Message}");
+		}
+		finally
+		{
+			ScanBtn.IsEnabled = true;
+			ScanBtn.Text = "🔍 Scan for Devices";
+		}
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+
+		// Stop auto-scan timer
+		if (_autoScanTimer != null)
+		{
+			_autoScanTimer.Stop();
+			_autoScanTimer = null;
+		}
+	}
+
+	private void OnDeviceCardTapped(object? sender, TappedEventArgs e)
+	{
+		if (sender is Frame frame && frame.BindingContext is BluetoothDevice device)
+		{
+			// Clear previous selection highlight
+			if (_selectedDeviceFrame != null)
+			{
+				_selectedDeviceFrame.BorderColor = Color.FromArgb("#4A90E2");
+				_selectedDeviceFrame.BackgroundColor = Color.FromArgb("#2D2D44");
+			}
+
+			// Highlight selected device
+			frame.BorderColor = Color.FromArgb("#4CAF50");
+			frame.BackgroundColor = Color.FromArgb("#3D3D54");
+			_selectedDeviceFrame = frame;
+
+			_selectedDevice = device;
+			ConnectBtn.IsVisible = true;
+			ConnectBtn.Text = $"Connect to {device.Name}";
+
+			System.Diagnostics.Debug.WriteLine($"Device selected: {device.Name} ({device.Address})");
+		}
+	}
+
+	private async void OnConnectClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			if (_selectedDevice == null)
+			{
+				await DialogService.ShowWarningAsync(
+					"No Device Selected",
+					"Please select a device from the list first.");
+				return;
+			}
+
+			System.Diagnostics.Debug.WriteLine($"=== CONNECT BUTTON CLICKED ===");
+			System.Diagnostics.Debug.WriteLine($"Attempting to connect to: {_selectedDevice.Name}");
+
+			ConnectBtn.IsEnabled = false;
+			ConnectBtn.Text = "Connecting...";
+
+			// Keep device card highlighted during connection
+			if (_selectedDeviceFrame != null)
+			{
+				_selectedDeviceFrame.BorderColor = Color.FromArgb("#FF9800"); // Orange for connecting
+			}
+
+			var success = await _bluetoothService.ConnectToDeviceAsync(_selectedDevice);
+
+			System.Diagnostics.Debug.WriteLine($"Connection result: {success}");
+
+			if (success)
+			{
+				// Keep card highlighted green on success
+				if (_selectedDeviceFrame != null)
+				{
+					_selectedDeviceFrame.BorderColor = Color.FromArgb("#4CAF50"); // Green for connected
+				}
+
+				await DialogService.ShowConnectedAsync(_selectedDevice.Name);
+			}
+			else
+			{
+				// Keep card highlighted red on failure
+				if (_selectedDeviceFrame != null)
+				{
+					_selectedDeviceFrame.BorderColor = Color.FromArgb("#FF5252"); // Red for failed
+				}
+
+				System.Diagnostics.Debug.WriteLine("Connection failed - offering diagnostics");
+
+				// Connection failed - offer to run diagnostics
+				bool runDiagnostics = await DialogService.ShowConnectionFailedAsync(_selectedDevice.Name);
+
+				if (runDiagnostics)
+				{
+					System.Diagnostics.Debug.WriteLine("Running diagnostics...");
+					var report = await _diagnostics.PerformDiagnosticsAsync();
+					await DialogService.ShowInfoAsync("Connectivity Diagnostics", report.ToString());
+				}
+
+				// Reset UI
+				ConnectBtn.IsEnabled = true;
+				ConnectBtn.Text = $"Connect to {_selectedDevice.Name}";
+
+				// Reset card highlight to blue (selected but not connected)
+				if (_selectedDeviceFrame != null)
+				{
+					_selectedDeviceFrame.BorderColor = Color.FromArgb("#4A90E2");
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"EXCEPTION in OnConnectClicked: {ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"Stack trace: {ex.StackTrace}");
+
+			await DialogService.ShowErrorAsync(
+				"Connection Error",
+				$"Failed to connect to device.\n\n{ex.Message}",
+				new List<string> { "Check Android logcat for details", "Try restarting Bluetooth", "Ensure device is paired" });
+
+			ConnectBtn.IsEnabled = true;
+			ConnectBtn.Text = $"Connect to {_selectedDevice?.Name ?? "Device"}";
+
+			// Reset card to red
+			if (_selectedDeviceFrame != null)
+			{
+				_selectedDeviceFrame.BorderColor = Color.FromArgb("#FF5252");
+			}
+		}
+	}
+
+	private async void OnDisconnectClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			// Stop audio routing if active
+			if (_audioService.IsRouting)
+			{
+				await _audioService.StopAudioRoutingAsync();
+				StopMicAnimation();
+			}
+
+			await _bluetoothService.DisconnectAsync();
+			await DialogService.ShowDisconnectedAsync();
+		}
+		catch (Exception ex)
+		{
+			await DialogService.ShowErrorAsync("Disconnect Error", $"Failed to disconnect from device.\n\n{ex.Message}");
+		}
+	}
+
+	private async void OnStartAudioClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			StartAudioBtn.IsEnabled = false;
+			var success = await _audioService.StartAudioRoutingAsync();
+
+			if (success)
+			{
+				StartAudioBtn.IsVisible = false;
+				StopAudioBtn.IsVisible = true;
+				AudioStatusLabel.Text = "🎤 Listening... Speak into microphone";
+				AudioStatusLabel.TextColor = Color.FromArgb("#4CAF50");
+
+				// Start microphone animation
+				StartMicAnimation();
+			}
+			else
+			{
+				StartAudioBtn.IsEnabled = true;
+				await DialogService.ShowErrorAsync("Audio Error", "Failed to start audio routing.");
+			}
+		}
+		catch (Exception ex)
+		{
+			StartAudioBtn.IsEnabled = true;
+			await DialogService.ShowErrorAsync("Audio Error", $"Failed to start audio routing.\n\n{ex.Message}");
+		}
+	}
+
+	private async void OnStopAudioClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			await _audioService.StopAudioRoutingAsync();
+			StopAudioBtn.IsVisible = false;
+			StartAudioBtn.IsVisible = true;
+			StartAudioBtn.IsEnabled = true;
+			AudioStatusLabel.Text = "Ready to amplify";
+			AudioStatusLabel.TextColor = Color.FromArgb("#8E8E93");
+
+			// Stop microphone animation
+			StopMicAnimation();
+		}
+		catch (Exception ex)
+		{
+			await DialogService.ShowErrorAsync("Audio Error", $"Failed to stop audio routing.\n\n{ex.Message}");
+		}
+	}
+
+	private async void StartMicAnimation()
+	{
+		_isAnimating = true;
+
+		while (_isAnimating)
+		{
+			await OuterCircle.ScaleTo(1.2, 500, Easing.SinInOut);
+			await OuterCircle.ScaleTo(1.0, 500, Easing.SinInOut);
+		}
+	}
+
+	private void StopMicAnimation()
+	{
+		_isAnimating = false;
+		OuterCircle.Scale = 1.0;
+	}
+
+	private void OnDeviceConnected(object? sender, BluetoothDevice device)
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			// Hide device list section
+			DeviceListSection.IsVisible = false;
+
+			// Show connected section
+			ConnectedSection.IsVisible = true;
+			ConnectedDeviceLabel.Text = device.Name;
+
+			// Reset audio controls
+			StartAudioBtn.IsEnabled = true;
+			StartAudioBtn.IsVisible = true;
+			StopAudioBtn.IsVisible = false;
+			AudioStatusLabel.Text = "Ready to amplify";
+			AudioStatusLabel.TextColor = Color.FromArgb("#8E8E93");
+		});
+	}
+
+	private void OnDeviceDisconnected(object? sender, EventArgs e)
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			// Show device list section
+			DeviceListSection.IsVisible = true;
+
+			// Hide connected section
+			ConnectedSection.IsVisible = false;
+
+			// Reset UI state
+			DeviceCollectionView.IsVisible = false;
+			ConnectBtn.IsVisible = false;
+			_selectedDevice = null;
+
+			// Stop any animations
+			StopMicAnimation();
+		});
+	}
+
+	private void OnAudioStatusChanged(object? sender, string status)
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			AudioStatusLabel.Text = status;
+		});
+	}
+
+	private async void OnDiagnosticsClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			DiagnosticsBtn.IsEnabled = false;
+			DiagnosticsBtn.Text = "🔧 Running...";
+
+			var report = await _diagnostics.PerformDiagnosticsAsync();
+
+			// Show detailed report
+			await DialogService.ShowInfoAsync("Connectivity Diagnostics", report.ToString());
+		}
+		catch (Exception ex)
+		{
+			await DialogService.ShowErrorAsync("Diagnostics Error", $"Failed to run diagnostics.\n\n{ex.Message}");
+		}
+		finally
+		{
+			DiagnosticsBtn.IsEnabled = true;
+			DiagnosticsBtn.Text = "🔧 Run Diagnostics";
+		}
+	}
+
+	private void OnConnectivityIssue(object? sender, string issue)
+	{
+		MainThread.BeginInvokeOnMainThread(async () =>
+		{
+			await DialogService.ShowWarningAsync("Connectivity Issue", issue);
+		});
+	}
+
+	private async void OnViewLogsClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			var logs = Services.DebugLogger.GetLogs();
+
+			if (string.IsNullOrEmpty(logs))
+			{
+				await DialogService.ShowInfoAsync(
+					"Debug Logs",
+					"No logs available yet.\n\nLogs will appear after attempting to connect to a device.");
+				return;
+			}
+
+			// Show logs with option to clear
+			bool clearLogs = await DialogService.ShowCustomDialogAsync(
+				title: "Debug Logs",
+				message: logs,
+				icon: DesignSystem.Icons.Logs,
+				primaryButtonText: "Clear Logs",
+				secondaryButtonText: "Close");
+
+			if (clearLogs)
+			{
+				Services.DebugLogger.Clear();
+				await DialogService.ShowSuccessAsync("Logs Cleared", "Debug logs have been cleared.");
+			}
+		}
+		catch (Exception ex)
+		{
+			await DialogService.ShowErrorAsync("Error", $"Failed to retrieve logs.\n\n{ex.Message}");
+		}
+	}
+
+	private async void OnHomeClicked(object? sender, EventArgs e)
+	{
+		// Return to device list view (disconnect if connected)
+		if (_bluetoothService.IsConnected)
+		{
+			bool shouldDisconnect = await DialogService.ShowConfirmationAsync(
+				"Return to Device List",
+				"Do you want to disconnect and return to the device list?",
+				confirmText: "Yes, Disconnect",
+				cancelText: "Cancel");
+
+			if (shouldDisconnect)
+			{
+				// Stop audio if running
+				if (_audioService.IsRouting)
+				{
+					await _audioService.StopAudioRoutingAsync();
+					StopMicAnimation();
+				}
+
+				await _bluetoothService.DisconnectAsync();
+			}
+		}
+	}
+
+	private void OnVolumeChanged(object? sender, ValueChangedEventArgs e)
+	{
+		// Update label to show percentage
+		int percentage = (int)e.NewValue;
+		VolumeLabel.Text = $"{percentage}%";
+
+		// Calculate gain (50% = 0.5x, 100% = 1.0x, 200% = 2.0x)
+		_currentGain = (float)e.NewValue / 100f;
+
+		Services.DebugLogger.Log($"Microphone gain changed to {percentage}% ({_currentGain:F2}x)");
+
+		// TODO: Apply gain to audio processing
+		// This will be integrated with the AudioFxEngine's GainEffect
+		// For now, just log the change
+	}
+}

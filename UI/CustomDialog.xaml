@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:ui="clr-namespace:BluetoothMicrophoneApp.UI"
+             x:Class="BluetoothMicrophoneApp.UI.CustomDialog"
+             x:Name="DialogView"
+             HorizontalOptions="Fill"
+             VerticalOptions="Fill">
+
+    <!-- Full Screen Overlay -->
+    <Grid x:Name="OverlayGrid"
+          BackgroundColor="#000000CC"
+          IsVisible="False">
+
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnOverlayTapped" />
+        </Grid.GestureRecognizers>
+
+        <!-- Dialog Container with Glassmorphic Effect -->
+        <Frame x:Name="DialogFrame"
+               BackgroundColor="#1E1E38"
+               BorderColor="#4A90E2"
+               CornerRadius="20"
+               HasShadow="True"
+               Padding="0"
+               Margin="30,0"
+               VerticalOptions="Center"
+               HorizontalOptions="Center"
+               MaximumWidthRequest="400"
+               Opacity="0"
+               Scale="0.8">
+
+            <Frame.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="30"
+                        Opacity="0.5" />
+            </Frame.Shadow>
+
+            <VerticalStackLayout Spacing="0">
+
+                <!-- Header with Icon and Title -->
+                <Grid BackgroundColor="#0F0F1E"
+                      Padding="20"
+                      ColumnDefinitions="60,*">
+
+                    <!-- Icon Container with Glow -->
+                    <Frame Grid.Column="0"
+                           BackgroundColor="#4A90E2"
+                           CornerRadius="30"
+                           Padding="0"
+                           HeightRequest="50"
+                           WidthRequest="50"
+                           HasShadow="False"
+                           VerticalOptions="Center">
+                        <Frame.Shadow>
+                            <Shadow Brush="#5B9CFF"
+                                    Offset="0,0"
+                                    Radius="20"
+                                    Opacity="0.8" />
+                        </Frame.Shadow>
+
+                        <Label x:Name="IconLabel"
+                               Text="ℹ️"
+                               FontSize="28"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Frame>
+
+                    <!-- Title -->
+                    <Label Grid.Column="1"
+                           x:Name="TitleLabel"
+                           Text="Dialog Title"
+                           TextColor="White"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center"
+                           Margin="15,0,0,0" />
+                </Grid>
+
+                <!-- Content Area -->
+                <ScrollView MaximumHeightRequest="400">
+                    <VerticalStackLayout Padding="20" Spacing="15">
+
+                        <!-- Bluetooth Connection Graphic (Optional) -->
+                        <ui:BluetoothConnectionGraphic x:Name="BluetoothGraphic"
+                                                      IsVisible="False"
+                                                      Margin="0,0,0,15" />
+
+                        <!-- Message Text -->
+                        <Label x:Name="MessageLabel"
+                               Text="Dialog message goes here"
+                               TextColor="#CCCCCC"
+                               FontSize="15"
+                               LineHeight="1.4" />
+
+                        <!-- Bullet Points Container -->
+                        <VerticalStackLayout x:Name="BulletPointsContainer"
+                                           Spacing="10"
+                                           IsVisible="False" />
+
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <!-- Action Buttons -->
+                <Grid x:Name="ButtonContainer"
+                      ColumnDefinitions="*,*"
+                      ColumnSpacing="10"
+                      Padding="20"
+                      BackgroundColor="#0F0F1E">
+
+                    <!-- Primary Button with Gradient Effect -->
+                    <Border Grid.Column="0"
+                            StrokeThickness="0"
+                            BackgroundColor="Transparent"
+                            StrokeShape="RoundRectangle 15">
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#4A90E2" Offset="0.0" />
+                                <GradientStop Color="#8B5CF6" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Shadow>
+                            <Shadow Brush="#5B9CFF"
+                                    Offset="0,4"
+                                    Radius="20"
+                                    Opacity="0.8" />
+                        </Border.Shadow>
+                        <Button x:Name="PrimaryButton"
+                                Text="OK"
+                                Clicked="OnPrimaryButtonClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="White"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                HeightRequest="50" />
+                    </Border>
+
+                    <!-- Secondary Button -->
+                    <Button x:Name="SecondaryButton"
+                            Grid.Column="1"
+                            Text="Cancel"
+                            Clicked="OnSecondaryButtonClicked"
+                            IsVisible="False"
+                            BackgroundColor="#2D2D44"
+                            TextColor="White"
+                            FontSize="16"
+                            CornerRadius="15"
+                            HeightRequest="50" />
+
+                </Grid>
+
+            </VerticalStackLayout>
+        </Frame>
+
+    </Grid>
+</ContentView>

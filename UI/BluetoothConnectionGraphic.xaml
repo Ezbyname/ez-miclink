@@ -1,0 +1,175 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.UI.BluetoothConnectionGraphic"
+             x:Name="GraphicView"
+             HeightRequest="200"
+             WidthRequest="200">
+
+    <!-- Animated Bluetooth Connection Visual -->
+    <Grid>
+        <!-- Outer Glow Ring (Animated) -->
+        <Ellipse x:Name="OuterGlow"
+                 Fill="Transparent"
+                 Stroke="#FF5B9C"
+                 StrokeThickness="3"
+                 WidthRequest="180"
+                 HeightRequest="180"
+                 Opacity="0.3"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <Ellipse.Shadow>
+                <Shadow Brush="#FF5B9C"
+                        Offset="0,0"
+                        Radius="40"
+                        Opacity="0.6" />
+            </Ellipse.Shadow>
+        </Ellipse>
+
+        <!-- Middle Glow Ring (Animated) -->
+        <Ellipse x:Name="MiddleGlow"
+                 Fill="Transparent"
+                 Stroke="#5B9CFF"
+                 StrokeThickness="3"
+                 WidthRequest="130"
+                 HeightRequest="130"
+                 Opacity="0.4"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <Ellipse.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="30"
+                        Opacity="0.7" />
+            </Ellipse.Shadow>
+        </Ellipse>
+
+        <!-- Inner Glow Ring (Animated) -->
+        <Ellipse x:Name="InnerGlow"
+                 Fill="Transparent"
+                 Stroke="#A855F7"
+                 StrokeThickness="2"
+                 WidthRequest="90"
+                 HeightRequest="90"
+                 Opacity="0.5"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <Ellipse.Shadow>
+                <Shadow Brush="#A855F7"
+                        Offset="0,0"
+                        Radius="20"
+                        Opacity="0.8" />
+            </Ellipse.Shadow>
+        </Ellipse>
+
+        <!-- Central Bluetooth Icon Container -->
+        <Frame x:Name="CenterIcon"
+               CornerRadius="35"
+               WidthRequest="70"
+               HeightRequest="70"
+               Padding="0"
+               HasShadow="False"
+               HorizontalOptions="Center"
+               VerticalOptions="Center"
+               BackgroundColor="Transparent">
+            <Frame.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#4A90E2" Offset="0.0" />
+                    <GradientStop Color="#8B5CF6" Offset="1.0" />
+                </LinearGradientBrush>
+            </Frame.Background>
+            <Frame.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="25"
+                        Opacity="0.9" />
+            </Frame.Shadow>
+
+            <!-- Bluetooth Icon -->
+            <Label Text="🔵"
+                   FontSize="40"
+                   HorizontalOptions="Center"
+                   VerticalOptions="Center" />
+        </Frame>
+
+        <!-- Connection Wave Lines (Animated) -->
+        <!-- Left Side -->
+        <BoxView x:Name="WaveLeft1"
+                 Color="#5B9CFF"
+                 WidthRequest="3"
+                 HeightRequest="30"
+                 CornerRadius="2"
+                 Opacity="0.6"
+                 TranslationX="-60"
+                 TranslationY="-20"
+                 Rotation="45"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <BoxView.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="8"
+                        Opacity="0.8" />
+            </BoxView.Shadow>
+        </BoxView>
+
+        <BoxView x:Name="WaveLeft2"
+                 Color="#FF5B9C"
+                 WidthRequest="3"
+                 HeightRequest="25"
+                 CornerRadius="2"
+                 Opacity="0.5"
+                 TranslationX="-75"
+                 TranslationY="0"
+                 Rotation="30"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <BoxView.Shadow>
+                <Shadow Brush="#FF5B9C"
+                        Offset="0,0"
+                        Radius="8"
+                        Opacity="0.8" />
+            </BoxView.Shadow>
+        </BoxView>
+
+        <!-- Right Side -->
+        <BoxView x:Name="WaveRight1"
+                 Color="#5B9CFF"
+                 WidthRequest="3"
+                 HeightRequest="30"
+                 CornerRadius="2"
+                 Opacity="0.6"
+                 TranslationX="60"
+                 TranslationY="-20"
+                 Rotation="-45"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <BoxView.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="8"
+                        Opacity="0.8" />
+            </BoxView.Shadow>
+        </BoxView>
+
+        <BoxView x:Name="WaveRight2"
+                 Color="#FF5B9C"
+                 WidthRequest="3"
+                 HeightRequest="25"
+                 CornerRadius="2"
+                 Opacity="0.5"
+                 TranslationX="75"
+                 TranslationY="0"
+                 Rotation="-30"
+                 HorizontalOptions="Center"
+                 VerticalOptions="Center">
+            <BoxView.Shadow>
+                <Shadow Brush="#FF5B9C"
+                        Offset="0,0"
+                        Radius="8"
+                        Opacity="0.8" />
+            </BoxView.Shadow>
+        </BoxView>
+
+    </Grid>
+</ContentView>

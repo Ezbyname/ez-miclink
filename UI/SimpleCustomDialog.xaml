@@ -1,0 +1,174 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.UI.SimpleCustomDialog"
+             x:Name="DialogRoot"
+             HorizontalOptions="Fill"
+             VerticalOptions="Fill"
+             InputTransparent="False">
+
+    <!-- Full Screen Overlay -->
+    <Grid x:Name="OverlayGrid"
+          BackgroundColor="#DD000000"
+          IsVisible="False"
+          InputTransparent="False">
+
+        <Grid.GestureRecognizers>
+            <TapGestureRecognizer Tapped="OnOverlayTapped" />
+        </Grid.GestureRecognizers>
+
+        <!-- Dialog Container -->
+        <Border x:Name="DialogBorder"
+                BackgroundColor="#1E1E38"
+                Stroke="#4A90E2"
+                StrokeThickness="1"
+                Margin="30,0"
+                Padding="0"
+                VerticalOptions="Center"
+                HorizontalOptions="Fill"
+                MaximumWidthRequest="400"
+                Opacity="0"
+                Scale="0.9"
+                InputTransparent="False">
+
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="20" />
+            </Border.StrokeShape>
+
+            <Border.Shadow>
+                <Shadow Brush="#5B9CFF"
+                        Offset="0,0"
+                        Radius="30"
+                        Opacity="0.5" />
+            </Border.Shadow>
+
+            <VerticalStackLayout Spacing="0">
+
+                <!-- Header -->
+                <Grid BackgroundColor="#0F0F1E"
+                      Padding="20"
+                      ColumnDefinitions="60,*"
+                      ColumnSpacing="15">
+
+                    <!-- Icon -->
+                    <Border Grid.Column="0"
+                            BackgroundColor="#4A90E2"
+                            StrokeThickness="0"
+                            WidthRequest="50"
+                            HeightRequest="50"
+                            VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="25" />
+                        </Border.StrokeShape>
+                        <Border.Shadow>
+                            <Shadow Brush="#5B9CFF"
+                                    Offset="0,0"
+                                    Radius="20"
+                                    Opacity="0.8" />
+                        </Border.Shadow>
+
+                        <Label x:Name="IconLabel"
+                               Text="ℹ️"
+                               FontSize="28"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- Title -->
+                    <Label Grid.Column="1"
+                           x:Name="TitleLabel"
+                           Text="Dialog Title"
+                           TextColor="White"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           VerticalOptions="Center" />
+                </Grid>
+
+                <!-- Content -->
+                <ScrollView MaximumHeightRequest="400">
+                    <VerticalStackLayout Padding="20" Spacing="15">
+
+                        <!-- Message -->
+                        <Label x:Name="MessageLabel"
+                               Text="Dialog message"
+                               TextColor="#CCCCCC"
+                               FontSize="15"
+                               LineHeight="1.4"
+                               HorizontalOptions="Center"
+                               HorizontalTextAlignment="Center" />
+
+                        <!-- Bullet Points -->
+                        <VerticalStackLayout x:Name="BulletPointsContainer"
+                                           Spacing="10"
+                                           IsVisible="False" />
+
+                    </VerticalStackLayout>
+                </ScrollView>
+
+                <!-- Buttons -->
+                <Grid x:Name="ButtonContainer"
+                      ColumnDefinitions="*"
+                      ColumnSpacing="10"
+                      Padding="20"
+                      BackgroundColor="#0F0F1E">
+
+                    <!-- Primary Button -->
+                    <Border Grid.Column="0"
+                            StrokeThickness="0"
+                            BackgroundColor="Transparent"
+                            InputTransparent="False">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="15" />
+                        </Border.StrokeShape>
+                        <Border.Background>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                <GradientStop Color="#3B82F6" Offset="0.0" />
+                                <GradientStop Color="#8B5CF6" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Background>
+                        <Border.Shadow>
+                            <Shadow Brush="#5B9CFF"
+                                    Offset="0,4"
+                                    Radius="20"
+                                    Opacity="0.6" />
+                        </Border.Shadow>
+
+                        <Button x:Name="PrimaryButton"
+                                Text="OK"
+                                Clicked="OnPrimaryButtonClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="White"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                HeightRequest="50" />
+                    </Border>
+
+                    <!-- Secondary Button -->
+                    <Border x:Name="SecondaryButtonBorder"
+                            Grid.Column="1"
+                            StrokeThickness="1.5"
+                            Stroke="#4A90E2"
+                            BackgroundColor="Transparent"
+                            IsVisible="False"
+                            InputTransparent="False">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="15" />
+                        </Border.StrokeShape>
+
+                        <Button x:Name="SecondaryButton"
+                                Text="Cancel"
+                                Clicked="OnSecondaryButtonClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="#4A90E2"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                HeightRequest="50" />
+                    </Border>
+
+                </Grid>
+
+            </VerticalStackLayout>
+        </Border>
+
+    </Grid>
+</ContentView>

@@ -1,0 +1,391 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.UI.EffectsPage"
+             Title="Sound Effects">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0A0E27" Offset="0.0" />
+            <GradientStop Color="#1A1A3E" Offset="0.3" />
+            <GradientStop Color="#2D2D58" Offset="0.7" />
+            <GradientStop Color="#1A1A3E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="25">
+
+            <!-- Header -->
+            <VerticalStackLayout Spacing="10" Margin="0,20,0,10">
+                <Label Text="🎭 Sound Effects Studio"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Transform your voice with amazing effects"
+                       FontSize="14"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Professional Presets -->
+            <VerticalStackLayout Spacing="15">
+                <Label Text="🎙 Professional Modes"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       Margin="0,0,0,10" />
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Podcast" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🎙"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Podcast"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Professional podcast quality"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="PodcastCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Stage MC" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🎤"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Stage MC"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Powerful stage presence"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="StageMCCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Karaoke" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🎶"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Karaoke"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Perfect for singing"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="KaraokeCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Announcer" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="📢"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Announcer"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Clear and authoritative"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="AnnouncerCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Fun Effects -->
+            <VerticalStackLayout Spacing="15">
+                <Label Text="🎪 Fun Effects"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       Margin="0,10,0,10" />
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Robot" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🤖"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Robot"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Mechanical voice effect"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="RobotCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Megaphone" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="📣"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Megaphone"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Loud and distorted"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="MegaphoneCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Stadium" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🏟"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Stadium"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Echo and reverb"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="StadiumCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Deep Voice" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🦁"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Deep Voice"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Lower pitch"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="DeepVoiceCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Chipmunk" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="🐿"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Chipmunk"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Higher pitch (helium)"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="ChipmunkCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+            </VerticalStackLayout>
+
+            <!-- Current Effect Display -->
+            <Border BackgroundColor="#2D2D58"
+                    Stroke="#5B8FFF"
+                    StrokeThickness="2"
+                    Padding="20"
+                    Margin="0,10,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Current Effect"
+                           FontSize="14"
+                           TextColor="#8E8E93"
+                           HorizontalOptions="Center" />
+                    <Label x:Name="CurrentEffectLabel"
+                           Text="None"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Back Button -->
+            <Border Stroke="#8E8E93"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,10,0,20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="← Back"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center"
+                       Padding="0,16" />
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>
