@@ -64,6 +64,7 @@ jobs:
         with:
           server_address: smtp.gmail.com
           server_port: 587
+          secure: true
           username: ${{ secrets.SENDER_EMAIL }}
           password: ${{ secrets.SENDER_APP_PASSWORD }}
           subject: '🎤 Voice Effect Discovery Report - ${{ steps.discovery.outputs.report_date }}'
@@ -75,7 +76,7 @@ jobs:
             The voice effect discovery has completed! 🎵
 
             📊 Discovery Report: ${{ steps.discovery.outputs.report_file }}
-            📅 Date: $(date +%Y-%m-%d)
+            📅 Date: ${{ steps.discovery.outputs.report_date }}
             🔍 Effects Analyzed: 10+
 
             🔥 Top Trending:
@@ -92,7 +93,7 @@ jobs:
 
             📎 Full report attached with complete DSP specifications!
 
-            Next discovery: $(date -d '+3 days' +%Y-%m-%d)
+            Next discovery: 3 days from now
 
             Happy coding! 🎤✨
 
@@ -100,7 +101,6 @@ jobs:
             Voice Discovery Bot
             Automated every 3 days
           attachments: ${{ steps.discovery.outputs.report_file }}
-          content_type: text/plain
 
       - name: Commit Report to Repository
         run: |
