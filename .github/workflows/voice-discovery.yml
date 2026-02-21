@@ -60,6 +60,8 @@ jobs:
           echo "report_date=$REPORT_DATE" >> $GITHUB_OUTPUT
 
       - name: Send Email with Report
+        id: send_email
+        continue-on-error: true
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
@@ -102,6 +104,15 @@ jobs:
             Voice Discovery Bot
             Automated every 3 days
           attachments: ${{ steps.discovery.outputs.report_file }}
+
+      - name: Fallback - Send Email via Python
+        if: steps.send_email.outcome == 'failure'
+        run: |
+          echo "Email action failed, trying Python fallback..."
+          python3 .github/workflows/send-email.py \
+            "${{ steps.discovery.outputs.report_file }}" \
+            "${{ secrets.SENDER_EMAIL }}" \
+            "${{ secrets.SENDER_APP_PASSWORD }}"
 
       - name: Commit Report to Repository
         run: |
