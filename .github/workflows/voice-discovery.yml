@@ -64,7 +64,7 @@ jobs:
         with:
           server_address: smtp.gmail.com
           server_port: 587
-          secure: true
+          connection_security: STARTTLS
           username: ${{ secrets.SENDER_EMAIL }}
           password: ${{ secrets.SENDER_APP_PASSWORD }}
           subject: '🎤 Voice Effect Discovery Report - ${{ steps.discovery.outputs.report_date }}'
