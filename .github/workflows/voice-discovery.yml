@@ -60,10 +60,11 @@ jobs:
           echo "report_date=$REPORT_DATE" >> $GITHUB_OUTPUT
 
       - name: Commit Report to Repository
+        continue-on-error: true
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
           git config --local user.name "github-actions[bot]"
-          git add ${{ steps.discovery.outputs.report_file }}
+          git add ${{ steps.discovery.outputs.report_file }} || true
           git commit -m "docs: Add voice discovery report ${{ steps.discovery.outputs.report_date }}" || echo "No changes to commit"
           git push || echo "No changes to push"
 
