@@ -63,10 +63,11 @@ jobs:
         uses: dawidd6/action-send-mail@v3
         with:
           server_address: smtp.gmail.com
-          server_port: 587
-          connection_security: STARTTLS
+          server_port: 465
+          secure: true
           username: ${{ secrets.SENDER_EMAIL }}
           password: ${{ secrets.SENDER_APP_PASSWORD }}
+          ignore_cert: true
           subject: '🎤 Voice Effect Discovery Report - ${{ steps.discovery.outputs.report_date }}'
           to: yahalom.assets@gmail.com
           from: Voice Discovery Bot <${{ secrets.SENDER_EMAIL }}>
