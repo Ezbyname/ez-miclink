@@ -5,6 +5,9 @@ public interface IBluetoothService
     Task<List<BluetoothDevice>> ScanForDevicesAsync();
     Task<bool> ConnectToDeviceAsync(BluetoothDevice device);
     Task DisconnectAsync();
+    Task<bool> UnpairDeviceAsync(BluetoothDevice device);
+    bool IsBluetoothEnabled();
+    Task<bool> RequestEnableBluetoothAsync();
     bool IsConnected { get; }
     BluetoothDevice? ConnectedDevice { get; }
     event EventHandler<BluetoothDevice>? DeviceConnected;

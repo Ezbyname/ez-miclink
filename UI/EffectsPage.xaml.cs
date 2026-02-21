@@ -66,14 +66,17 @@ public partial class EffectsPage : ContentPage
 			_currentEffect = effect;
 			CurrentEffectLabel.Text = effect;
 
-			// TODO: Apply the effect to the audio service
-			// For now, just show a confirmation
+			// Apply the effect to the audio service
+			string effectPresetName = effect.Replace(" ", "_").ToLower();
+			_audioService.SetEffect(effectPresetName);
+
+			// Show confirmation
 			await DialogService.ShowSuccessAsync(
 				"Effect Applied",
 				$"{effect} effect has been activated!",
 				new List<string>
 				{
-					"This effect will be applied to your voice",
+					"This effect is now processing your voice in real-time",
 					"You can change effects at any time"
 				}
 			);

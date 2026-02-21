@@ -2,6 +2,24 @@
 
 A cross-platform mobile application for iOS and Android that amplifies your voice by routing your phone's microphone audio through a Bluetooth speaker.
 
+## 🧪 Development Workflow
+
+**⚠️ IMPORTANT: Always run sanity tests after making changes!**
+
+```bash
+# Quick test (from project root):
+.\run-tests.ps1
+
+# Build with automatic testing:
+.\Scripts\build-with-sanity-check.ps1
+```
+
+**See [DEVELOPER_WORKFLOW.md](DEVELOPER_WORKFLOW.md) for detailed testing guidelines.**
+
+**All tests must pass before building or committing!**
+
+---
+
 ## Features
 
 - Scan for available Bluetooth devices

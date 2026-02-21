@@ -1,5 +1,6 @@
 using AVFoundation;
 using BluetoothMicrophoneApp.Services;
+using BluetoothMicrophoneApp.Audio.DSP;
 
 namespace BluetoothMicrophoneApp.Platforms.iOS.Services;
 
@@ -9,10 +10,18 @@ public class AudioService : IAudioService
     private AVAudioInputNode? _inputNode;
     private AVAudioMixerNode? _mixerNode;
     private bool _isRouting;
+    private AudioEngine _dspEngine;
+    private float[] _floatBuffer;
 
     public bool IsRouting => _isRouting;
 
     public event EventHandler<string>? StatusChanged;
+
+    public AudioService()
+    {
+        _dspEngine = new AudioEngine();
+        _floatBuffer = Array.Empty<float>();
+    }
 
     public async Task<bool> StartAudioRoutingAsync()
     {
@@ -57,11 +66,30 @@ public class AudioService : IAudioService
 
             var inputFormat = _inputNode.GetBusOutputFormat(0);
 
-            // Install tap to route microphone input to output
-            _inputNode.InstallTapOnBus(0, 4096, inputFormat, (buffer, when) =>
+            // Initialize DSP engine with sample rate
+            int sampleRate = (int)inputFormat.SampleRate;
+            _dspEngine.Initialize(sampleRate);
+            _dspEngine.SetPreset("clean"); // Start with clean preset
+
+            // Allocate float buffer for DSP processing
+            uint bufferSize = 4096;
+            _floatBuffer = new float[bufferSize];
+
+            // Install tap to route microphone input through DSP to output
+            _inputNode.InstallTapOnBus(0, bufferSize, inputFormat, (buffer, when) =>
             {
-                // Route audio through mixer
-                _mixerNode?.RenderAudioAndRender(ref buffer.MutableAudioBufferList, when);
+                try
+                {
+                    // Process audio through DSP engine
+                    ProcessAudioBuffer(buffer);
+
+                    // Route processed audio through mixer
+                    _mixerNode?.RenderAudioAndRender(ref buffer.MutableAudioBufferList, when);
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[iOS AudioService] Tap error: {ex.Message}");
+                }
             });
 
             // Connect input to mixer to output
@@ -109,16 +137,83 @@ public class AudioService : IAudioService
 
     public void SetVolume(double volume)
     {
-        // Volume control for mixer node (0.0 to 1.0)
-        if (_mixerNode != null)
+        // Apply volume as digital gain in DSP engine
+        // This ensures consistent volume control across both platforms
+        try
         {
-            try
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Setting volume to {volume * 100}%");
+            _dspEngine.SetVolume(volume);
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] SetVolume error: {ex.Message}");
+        }
+    }
+
+    public void SetEffect(string effectName)
+    {
+        try
+        {
+            _dspEngine.SetPreset(effectName);
+            StatusChanged?.Invoke(this, $"Effect changed to: {effectName}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] SetEffect error: {ex.Message}");
+            StatusChanged?.Invoke(this, $"Error setting effect: {ex.Message}");
+        }
+    }
+
+    public string GetCurrentEffect()
+    {
+        return _dspEngine.GetCurrentPreset();
+    }
+
+    public string[] GetAvailableEffects()
+    {
+        return new[]
+        {
+            "clean", "podcast", "stage_mc", "karaoke", "announcer",
+            "robot", "megaphone", "stadium", "deep_voice", "chipmunk"
+        };
+    }
+
+    private unsafe void ProcessAudioBuffer(AVAudioPCMBuffer buffer)
+    {
+        // Get audio buffer info
+        var audioBufferList = buffer.AudioBufferList;
+        int channelCount = (int)buffer.Format.ChannelCount;
+        int frameCount = (int)buffer.FrameLength;
+
+        // iOS typically uses Float32 audio format
+        // Process each channel (mono or stereo)
+        for (int channel = 0; channel < channelCount; channel++)
+        {
+            var audioBuffer = audioBufferList[channel];
+            float* data = (float*)audioBuffer.Data;
+
+            if (data == null)
+                continue;
+
+            // Resize float buffer if needed
+            if (_floatBuffer.Length < frameCount)
             {
-                _mixerNode.Volume = (float)volume;
+                _floatBuffer = new float[frameCount];
             }
-            catch (Exception ex)
+
+            // Copy from native buffer to managed array
+            for (int i = 0; i < frameCount; i++)
             {
-                System.Diagnostics.Debug.WriteLine($"[AudioService] SetVolume error: {ex.Message}");
+                _floatBuffer[i] = data[i];
+            }
+
+            // Process through DSP engine
+            _dspEngine.ProcessBuffer(_floatBuffer, 0, frameCount);
+
+            // Copy back to native buffer
+            for (int i = 0; i < frameCount; i++)
+            {
+                data[i] = _floatBuffer[i];
             }
         }
     }

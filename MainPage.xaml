@@ -19,22 +19,44 @@
             <VerticalStackLayout Spacing="30">
 
                 <!-- Header -->
-                <Grid Margin="0,20,0,0">
-                    <!-- App Title - Centered -->
-                    <Label Text="E-z MicLink"
+                <Grid Margin="0,20,0,0" ColumnSpacing="10">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="Auto" />
+                    </Grid.ColumnDefinitions>
+
+                    <!-- App Title - Centered across full width -->
+                    <Label Grid.Column="0"
+                           Grid.ColumnSpan="2"
+                           Text="E-z MicLink"
                            FontSize="32"
                            FontAttributes="Bold"
                            TextColor="White"
                            HorizontalOptions="Center"
                            VerticalOptions="Center" />
 
-                    <!-- Home text (top left) -->
-                    <Label Text="Home"
-                           FontSize="16"
-                           TextColor="#9999AA"
-                           HorizontalOptions="Start"
-                           VerticalOptions="Center"
-                           Margin="10,0,0,0" />
+                    <!-- Settings Button (top right) -->
+                    <Border Grid.Column="1"
+                            x:Name="SettingsButton"
+                            StrokeThickness="0"
+                            BackgroundColor="Transparent"
+                            Padding="8"
+                            WidthRequest="48"
+                            HeightRequest="48"
+                            HorizontalOptions="End"
+                            VerticalOptions="Center">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="24" />
+                        </Border.StrokeShape>
+                        <Border.GestureRecognizers>
+                            <TapGestureRecognizer Tapped="OnSettingsClicked" />
+                        </Border.GestureRecognizers>
+
+                        <Label Text="⚙️"
+                               FontSize="28"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Center" />
+                    </Border>
                 </Grid>
 
                 <!-- Scan Button -->
@@ -112,12 +134,30 @@
                               BackgroundColor="Transparent"
                               IsVisible="False">
                             <VerticalStackLayout Spacing="10">
-                                <Label x:Name="DeviceNameLabel"
-                                       Text="JBL LIVE FREE 2 TWS"
-                                       FontSize="22"
-                                       FontAttributes="Bold"
-                                       TextColor="White"
-                                       HorizontalOptions="Center" />
+                                <HorizontalStackLayout HorizontalOptions="Center" Spacing="10">
+                                    <Label x:Name="DeviceNameLabel"
+                                           Text="JBL LIVE FREE 2 TWS"
+                                           FontSize="22"
+                                           FontAttributes="Bold"
+                                           TextColor="White"
+                                           VerticalOptions="Center" />
+                                    <Border x:Name="RenameButton"
+                                            BackgroundColor="Transparent"
+                                            Stroke="#5B8FFF"
+                                            StrokeThickness="1"
+                                            Padding="8,4"
+                                            IsVisible="False">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="8" />
+                                        </Border.StrokeShape>
+                                        <Border.GestureRecognizers>
+                                            <TapGestureRecognizer Tapped="OnRenameDeviceClicked" />
+                                        </Border.GestureRecognizers>
+                                        <Label Text="✏️"
+                                               FontSize="16"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                </HorizontalStackLayout>
                                 <Label x:Name="DeviceStatusLabel"
                                        Text="Ready to connect"
                                        FontSize="15"
@@ -399,13 +439,14 @@
                                     <Border.StrokeShape>
                                         <RoundRectangle CornerRadius="12" />
                                     </Border.StrokeShape>
-                                    <Grid ColumnDefinitions="Auto,*">
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
                                         <Label Text="🔵"
                                                FontSize="28"
                                                VerticalOptions="Center"
                                                Margin="0,0,12,0" />
                                         <VerticalStackLayout Grid.Column="1"
-                                                           Spacing="4">
+                                                           Spacing="4"
+                                                           VerticalOptions="Center">
                                             <Label Text="{Binding Name}"
                                                    FontSize="16"
                                                    FontAttributes="Bold"
@@ -414,6 +455,49 @@
                                                    FontSize="12"
                                                    TextColor="#8E8E93" />
                                         </VerticalStackLayout>
+
+                                        <!-- Edit Name Button -->
+                                        <Border Grid.Column="2"
+                                                BackgroundColor="Transparent"
+                                                Stroke="#4A90E266"
+                                                StrokeThickness="1"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                VerticalOptions="Center"
+                                                Margin="0,0,8,0">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="20" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnEditDeviceNameClicked" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="✏️"
+                                                   FontSize="18"
+                                                   Opacity="0.7"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+
+                                        <!-- Delete Button (NEW STYLE) -->
+                                        <Border Grid.Column="3"
+                                                BackgroundColor="Transparent"
+                                                Stroke="#FB718566"
+                                                StrokeThickness="1"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="20" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnDeleteDeviceClicked" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="🗑️"
+                                                   FontSize="18"
+                                                   Opacity="0.7"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
                                     </Grid>
                                 </Border>
                             </DataTemplate>

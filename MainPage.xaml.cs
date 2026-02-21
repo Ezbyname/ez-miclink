@@ -1,5 +1,6 @@
 using BluetoothMicrophoneApp.Services;
 using BluetoothMicrophoneApp.UI;
+using BluetoothMicrophoneApp.Pages;
 
 namespace BluetoothMicrophoneApp;
 
@@ -8,6 +9,7 @@ public partial class MainPage : ContentPage
 	private readonly IBluetoothService _bluetoothService;
 	private readonly IAudioService _audioService;
 	private readonly IConnectivityDiagnostics _diagnostics;
+	private readonly IAuthService _authService;
 
 	private List<BluetoothDevice> _availableDevices = new();
 	private BluetoothDevice? _selectedDevice;
@@ -24,13 +26,14 @@ public partial class MainPage : ContentPage
 
 	private UIState _currentState = UIState.Initial;
 
-	public MainPage(IBluetoothService bluetoothService, IAudioService audioService, IConnectivityDiagnostics diagnostics)
+	public MainPage(IBluetoothService bluetoothService, IAudioService audioService, IConnectivityDiagnostics diagnostics, IAuthService authService)
 	{
 		InitializeComponent();
 
 		_bluetoothService = bluetoothService;
 		_audioService = audioService;
 		_diagnostics = diagnostics;
+		_authService = authService;
 
 		_bluetoothService.DeviceConnected += OnDeviceConnected;
 		_bluetoothService.DeviceDisconnected += OnDeviceDisconnected;
@@ -68,6 +71,37 @@ public partial class MainPage : ContentPage
 		}
 	}
 
+	private async Task<bool> CheckBluetoothPermissionsAsync()
+	{
+		try
+		{
+			// On Android 12+ (API 31+), we need BLUETOOTH_SCAN and BLUETOOTH_CONNECT
+			// On older Android, we need BLUETOOTH and location permissions
+
+			var bluetoothStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+
+			if (bluetoothStatus != PermissionStatus.Granted)
+			{
+				System.Diagnostics.Debug.WriteLine("[Permissions] Requesting Bluetooth permissions...");
+				bluetoothStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+			}
+
+			if (bluetoothStatus != PermissionStatus.Granted)
+			{
+				System.Diagnostics.Debug.WriteLine("[Permissions] Bluetooth permission denied");
+				return false;
+			}
+
+			System.Diagnostics.Debug.WriteLine("[Permissions] Bluetooth permissions granted");
+			return true;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[Permissions] Error checking Bluetooth permissions: {ex.Message}");
+			return false;
+		}
+	}
+
 	// Set UI State
 	private void SetState(UIState newState)
 	{
@@ -92,23 +126,29 @@ public partial class MainPage : ContentPage
 
 				case UIState.DeviceList:
 					DeviceListSection.IsVisible = true;
+					// Clear selection to allow re-selecting the same device
+					DeviceCollectionView.SelectedItem = null;
 					break;
 
 				case UIState.DeviceSelected:
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
-					DeviceNameLabel.Text = _selectedDevice?.Name ?? "Unknown Device";
+					RenameButton.IsVisible = false; // Hide rename button until connected
+					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Ready to connect";
 					DeviceStatusLabel.TextColor = Color.FromArgb("#8E8E93");
 					ActionButtonsSection.IsVisible = true;
 					PrimaryActionLabel.Text = "Connect";
+					SecondaryActionBorder.IsVisible = true;
+					SecondaryActionLabel.Text = "Back";
 					Grid.SetColumnSpan(PrimaryActionBorder, 2);
 					break;
 
 				case UIState.Connecting:
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
-					DeviceNameLabel.Text = _selectedDevice?.Name ?? "Unknown Device";
+					RenameButton.IsVisible = false;
+					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Connecting...";
 					DeviceStatusLabel.TextColor = Color.FromArgb("#4A90E2");
 					ActionButtonsSection.IsVisible = false;
@@ -117,7 +157,8 @@ public partial class MainPage : ContentPage
 				case UIState.Connected:
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
-					DeviceNameLabel.Text = _selectedDevice?.Name ?? "Unknown Device";
+					RenameButton.IsVisible = true; // Show rename button when connected
+					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "✓ Connected";
 					DeviceStatusLabel.TextColor = Color.FromArgb("#4CAF50");
 					AudioControlsSection.IsVisible = true;
@@ -127,12 +168,13 @@ public partial class MainPage : ContentPage
 				case UIState.Failed:
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
-					DeviceNameLabel.Text = _selectedDevice?.Name ?? "Unknown Device";
+					RenameButton.IsVisible = false;
+					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Connection failed";
 					DeviceStatusLabel.TextColor = Color.FromArgb("#FF5252");
 
 					MessageSection.IsVisible = true;
-					MessageLabel.Text = $"Could not connect to {_selectedDevice?.Name}.";
+					MessageLabel.Text = $"Could not connect to {GetDeviceDisplayName(_selectedDevice)}.";
 					ShowFailureReasons();
 
 					ActionButtonsSection.IsVisible = true;
@@ -218,8 +260,92 @@ public partial class MainPage : ContentPage
 			ScanningIndicator.IsRunning = true;
 			ScanningIndicator.IsVisible = true;
 
+			// Check and request Bluetooth permissions
+			var hasPermissions = await CheckBluetoothPermissionsAsync();
+			if (!hasPermissions)
+			{
+				await DialogService.ShowErrorAsync(
+					"Permissions Required",
+					"Bluetooth permissions are required to scan for devices.",
+					new List<string>
+					{
+						"Grant Bluetooth permissions in Settings",
+						"Restart the app and try again"
+					});
+				return;
+			}
+
+			// Check if Bluetooth is enabled
+			if (!_bluetoothService.IsBluetoothEnabled())
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth is OFF, asking user for permission to enable");
+
+				var enableBluetooth = await DisplayAlert(
+					"Bluetooth is Off",
+					"Bluetooth is currently turned off. Would you like to turn it on?",
+					"Turn On",
+					"Cancel");
+
+				if (enableBluetooth)
+				{
+					System.Diagnostics.Debug.WriteLine("[MainPage] User approved, enabling Bluetooth...");
+
+					bool success = await _bluetoothService.RequestEnableBluetoothAsync();
+
+					if (!success)
+					{
+						await DialogService.ShowErrorAsync(
+							"Bluetooth Error",
+							"Failed to enable Bluetooth. Please enable it manually from Settings.",
+							new List<string>
+							{
+								"Go to Settings → Bluetooth",
+								"Turn on Bluetooth",
+								"Return to the app and try again"
+							});
+						return;
+					}
+
+					System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth enabled successfully");
+				}
+				else
+				{
+					System.Diagnostics.Debug.WriteLine("[MainPage] User declined to enable Bluetooth");
+					await DialogService.ShowInfoAsync(
+						"Bluetooth Required",
+						"Bluetooth must be enabled to scan for devices. Please enable it manually from Settings.",
+						new List<string>
+						{
+							"Go to Settings → Bluetooth",
+							"Turn on Bluetooth",
+							"Return to the app and try again"
+						});
+					return;
+				}
+			}
+
 			var devices = await _bluetoothService.ScanForDevicesAsync();
 			_availableDevices = devices;
+
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ===== Applying Custom Names to {_availableDevices.Count} Devices =====");
+
+			// Apply custom names to devices
+			foreach (var device in _availableDevices)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Processing device:");
+				System.Diagnostics.Debug.WriteLine($"  → Original Name: '{device.Name}'");
+				System.Diagnostics.Debug.WriteLine($"  → Device Address: '{device.Address}'");
+
+				var displayName = DeviceNameManager.GetDisplayName(device.Address, device.Name);
+
+				System.Diagnostics.Debug.WriteLine($"  → Display Name Returned: '{displayName}'");
+
+				device.Name = displayName;
+
+				System.Diagnostics.Debug.WriteLine($"  → Device.Name Set To: '{device.Name}'");
+			}
+
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ===== Custom Names Applied =====");
 
 			if (_availableDevices.Any())
 			{
@@ -234,8 +360,9 @@ public partial class MainPage : ContentPage
 					new List<string>
 					{
 						"Make sure Bluetooth is enabled",
-						"Device is paired in Settings",
-						"Device is turned on and nearby"
+						"Turn on your Bluetooth device",
+						"Ensure device is in pairing mode",
+						"Device should be within range (10m)"
 					});
 			}
 		}
@@ -259,7 +386,22 @@ public partial class MainPage : ContentPage
 			_selectedDevice = e.CurrentSelection[0] as BluetoothDevice;
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Device selected: {_selectedDevice?.Name}");
 
-			SetState(UIState.DeviceSelected);
+			// Check if we're already connected to this device
+			if (_bluetoothService.IsConnected &&
+			    _bluetoothService.ConnectedDevice != null &&
+			    _selectedDevice != null &&
+			    _bluetoothService.ConnectedDevice.Address == _selectedDevice.Address)
+			{
+				// Already connected to this device - go directly to engagement view
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Already connected to {_selectedDevice.Name}, going to engagement view");
+				SetState(UIState.Connected);
+			}
+			else
+			{
+				// Not connected or different device - show connect button
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Not connected to this device, showing connect button");
+				SetState(UIState.DeviceSelected);
+			}
 		}
 	}
 
@@ -289,7 +431,13 @@ public partial class MainPage : ContentPage
 	{
 		try
 		{
-			if (_currentState == UIState.Failed)
+			if (_currentState == UIState.DeviceSelected)
+			{
+				// Back to device list - clear selection
+				_selectedDevice = null;
+				SetState(UIState.DeviceList);
+			}
+			else if (_currentState == UIState.Failed)
 			{
 				// Troubleshoot action
 				var report = await _diagnostics.PerformDiagnosticsAsync();
@@ -408,6 +556,153 @@ public partial class MainPage : ContentPage
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Disconnect error: {ex.Message}");
+		}
+	}
+
+	private async void OnRenameDeviceClicked(object? sender, EventArgs e)
+	{
+		if (_selectedDevice == null) return;
+
+		try
+		{
+			var currentName = DeviceNameManager.GetDisplayName(_selectedDevice.Address, _selectedDevice.Name);
+			var result = await DisplayPromptAsync(
+				"Rename Device",
+				"Enter a custom name for this device:",
+				initialValue: currentName,
+				maxLength: 30,
+				keyboard: Keyboard.Text);
+
+			if (!string.IsNullOrWhiteSpace(result))
+			{
+				DeviceNameManager.SetCustomName(_selectedDevice.Address, result);
+				DeviceNameLabel.Text = result;
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device renamed: {_selectedDevice.Name} → {result}");
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Rename error: {ex.Message}");
+		}
+	}
+
+	private async void OnEditDeviceNameClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			// Get the device from the tapped element
+			if (sender is Border border && border.BindingContext is BluetoothDevice device)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ===== OnEditDeviceNameClicked =====");
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device Address: '{device.Address}'");
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device Current Name: '{device.Name}'");
+
+				var currentName = DeviceNameManager.GetDisplayName(device.Address, device.Name);
+
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Current Display Name: '{currentName}'");
+
+				var result = await DisplayPromptAsync(
+					"Rename Device",
+					"Enter a custom name for this device:",
+					initialValue: currentName,
+					maxLength: 30,
+					keyboard: Keyboard.Text);
+
+				System.Diagnostics.Debug.WriteLine($"[MainPage] User entered: '{result}'");
+
+				if (!string.IsNullOrWhiteSpace(result))
+				{
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Calling SetCustomName...");
+					DeviceNameManager.SetCustomName(device.Address, result);
+
+					System.Diagnostics.Debug.WriteLine($"[MainPage] SetCustomName completed");
+
+					// Update the device name in the list
+					device.Name = result;
+
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Updated device.Name to: '{device.Name}'");
+
+					// Refresh the collection view to show the new name
+					DeviceCollectionView.ItemsSource = null;
+					DeviceCollectionView.ItemsSource = _availableDevices;
+
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Collection view refreshed");
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Device renamed: {device.Address} → {result}");
+				}
+				else
+				{
+					System.Diagnostics.Debug.WriteLine($"[MainPage] User canceled or entered empty name");
+				}
+
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ===== OnEditDeviceNameClicked END =====");
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Edit device name error: {ex.Message}");
+			await DialogService.ShowErrorAsync("Error", $"Failed to rename device.\n\n{ex.Message}");
+		}
+	}
+
+	private async void OnDeleteDeviceClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			// Get the device from the tapped element
+			if (sender is Border border && border.BindingContext is BluetoothDevice device)
+			{
+				var deviceName = DeviceNameManager.GetDisplayName(device.Address, device.Name);
+				var confirmed = await DisplayAlert(
+					"Forget Device",
+					$"Are you sure you want to forget \"{deviceName}\"?\n\nThis will:\n• Remove custom name\n• Unpair the device from your phone",
+					"Forget",
+					"Cancel");
+
+				if (confirmed)
+				{
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Forgetting device: {deviceName}");
+
+					// Remove custom name
+					DeviceNameManager.RemoveCustomName(device.Address);
+
+					// Unpair the device (Android)
+					await _bluetoothService.UnpairDeviceAsync(device);
+
+					// Refresh device list
+					_availableDevices.Remove(device);
+					DeviceCollectionView.ItemsSource = null;
+					DeviceCollectionView.ItemsSource = _availableDevices;
+
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Device forgotten: {deviceName}");
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Delete device error: {ex.Message}");
+			await DialogService.ShowErrorAsync("Error", $"Failed to forget device.\n\n{ex.Message}");
+		}
+	}
+
+	// Helper method to get device display name (custom or original)
+	private string GetDeviceDisplayName(BluetoothDevice? device)
+	{
+		if (device == null) return "Unknown Device";
+		return DeviceNameManager.GetDisplayName(device.Address, device.Name);
+	}
+
+	private async void OnSettingsClicked(object? sender, EventArgs e)
+	{
+		System.Diagnostics.Debug.WriteLine("[MainPage] Settings button clicked");
+
+		try
+		{
+			var settingsPage = new SettingsPage(_authService);
+			await Navigation.PushAsync(settingsPage);
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Settings navigation error: {ex.Message}");
 		}
 	}
 }

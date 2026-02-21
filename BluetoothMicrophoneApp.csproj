@@ -20,6 +20,10 @@
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>enable</Nullable>
 
+		<!-- Prevent duplicate assembly attribute generation -->
+		<GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+		<GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
+
 		<!-- Force Android build to use JDK 21 -->
 		<JavaSdkDirectory>C:\Program Files\Eclipse Adoptium\jdk-21.0.10.7-hotspot\</JavaSdkDirectory>
 

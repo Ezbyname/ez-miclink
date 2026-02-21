@@ -1,0 +1,675 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.Pages.SettingsPage"
+             NavigationPage.HasNavigationBar="False">
+
+	<!-- Premium gradient background (deep navy to dark indigo) -->
+	<ContentPage.Background>
+		<LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+			<GradientStop Color="#0A0E27" Offset="0.0" />
+			<GradientStop Color="#1A1A3E" Offset="0.4" />
+			<GradientStop Color="#1E1E4A" Offset="0.6" />
+			<GradientStop Color="#1A1A3E" Offset="1.0" />
+		</LinearGradientBrush>
+	</ContentPage.Background>
+
+	<Grid RowDefinitions="Auto,*">
+
+		<!-- Header Area -->
+		<Grid Grid.Row="0"
+		      Padding="20,40,20,20"
+		      ColumnDefinitions="Auto,*,Auto"
+		      RowDefinitions="Auto,Auto">
+
+			<!-- Back Button -->
+			<Border Grid.Column="0" Grid.Row="0"
+			        StrokeThickness="0"
+			        BackgroundColor="Transparent"
+			        Padding="0"
+			        WidthRequest="40"
+			        HeightRequest="40">
+				<Border.GestureRecognizers>
+					<TapGestureRecognizer Tapped="OnBackClicked" />
+				</Border.GestureRecognizers>
+
+				<Label Text="←"
+				       FontSize="28"
+				       TextColor="White"
+				       HorizontalOptions="Center"
+				       VerticalOptions="Center" />
+			</Border>
+
+			<!-- Title -->
+			<Label Grid.Column="1" Grid.Row="0"
+			       Text="Settings"
+			       FontSize="28"
+			       FontAttributes="Bold"
+			       TextColor="White"
+			       HorizontalOptions="Center"
+			       VerticalOptions="Center" />
+
+			<!-- Info Icon (optional) -->
+			<Border Grid.Column="2" Grid.Row="0"
+			        StrokeThickness="0"
+			        BackgroundColor="Transparent"
+			        Padding="0"
+			        WidthRequest="40"
+			        HeightRequest="40"
+			        IsVisible="False">
+
+				<Label Text="ℹ️"
+				       FontSize="20"
+				       HorizontalOptions="Center"
+				       VerticalOptions="Center" />
+			</Border>
+
+			<!-- Subtitle -->
+			<Label Grid.Column="0" Grid.ColumnSpan="3" Grid.Row="1"
+			       Text="Manage audio, devices, and preferences"
+			       FontSize="14"
+			       TextColor="#9999AA"
+			       HorizontalOptions="Center"
+			       Margin="0,5,0,0" />
+		</Grid>
+
+		<!-- Scrollable Content -->
+		<ScrollView Grid.Row="1">
+			<VerticalStackLayout Spacing="16" Padding="20,10,20,40">
+
+				<!-- User Status Card -->
+				<Border StrokeThickness="1"
+				        Stroke="#4A90E255"
+				        BackgroundColor="#1E1E3888"
+				        Padding="16"
+				        Margin="0,0,0,8">
+					<Border.Shadow>
+						<Shadow Brush="#4A90E244"
+						        Radius="20"
+						        Opacity="0.6"
+						        Offset="0,4" />
+					</Border.Shadow>
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16" />
+					</Border.StrokeShape>
+					<Border.GestureRecognizers>
+						<TapGestureRecognizer Tapped="OnManageAccountClicked" />
+					</Border.GestureRecognizers>
+
+					<Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+						<!-- Avatar -->
+						<Border Grid.Column="0"
+						        StrokeThickness="2"
+						        Stroke="#4A90E2"
+						        BackgroundColor="#2D2D58"
+						        WidthRequest="52"
+						        HeightRequest="52">
+							<Border.StrokeShape>
+								<RoundRectangle CornerRadius="26" />
+							</Border.StrokeShape>
+
+							<Label Text="👤"
+							       FontSize="28"
+							       HorizontalOptions="Center"
+							       VerticalOptions="Center" />
+						</Border>
+
+						<!-- User Info -->
+						<VerticalStackLayout Grid.Column="1"
+						                     Spacing="4"
+						                     VerticalOptions="Center">
+							<Label x:Name="UserNameLabel"
+							       Text="John Doe"
+							       TextColor="White"
+							       FontSize="18"
+							       FontAttributes="Bold" />
+
+							<Label x:Name="UserEmailLabel"
+							       Text="john@example.com"
+							       TextColor="#9999AA"
+							       FontSize="14" />
+						</VerticalStackLayout>
+
+						<!-- Manage Chevron -->
+						<Label Grid.Column="2"
+						       Text="›"
+						       FontSize="32"
+						       TextColor="#4A90E2"
+						       VerticalOptions="Center" />
+					</Grid>
+				</Border>
+
+				<!-- Section: Audio & Microphone -->
+				<Border StrokeThickness="1"
+				        Stroke="#4A90E233"
+				        BackgroundColor="#1E1E3888"
+				        Padding="0">
+					<Border.Shadow>
+						<Shadow Brush="#4A90E222"
+						        Radius="16"
+						        Opacity="0.4"
+						        Offset="0,2" />
+					</Border.Shadow>
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16" />
+					</Border.StrokeShape>
+
+					<VerticalStackLayout Spacing="0">
+						<!-- Section Header -->
+						<Label Text="🎤 Audio &amp; Microphone"
+						       FontSize="16"
+						       FontAttributes="Bold"
+						       TextColor="#CCCCEE"
+						       Margin="16,16,16,12" />
+
+						<!-- Mic Gain -->
+						<Grid Padding="16,12" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Label Grid.Column="0"
+							       Text="🎚️"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Mic Gain"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="MicGainLabel"
+							       Grid.Column="2"
+							       Text="100%"
+							       TextColor="#4A90E2"
+							       FontSize="15"
+							       FontAttributes="Bold"
+							       VerticalOptions="Center" />
+						</Grid>
+
+						<Slider x:Name="MicGainSlider"
+						        Minimum="0"
+						        Maximum="200"
+						        Value="100"
+						        MinimumTrackColor="#4A90E2"
+						        MaximumTrackColor="#444466"
+						        ThumbColor="#4A90E2"
+						        Margin="48,0,16,12"
+						        ValueChanged="OnMicGainChanged" />
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Noise Reduction -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnNoiseReductionToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🔇"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Noise Reduction"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="NoiseReductionSwitch"
+							        Grid.Column="2"
+							        IsToggled="True"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnNoiseReductionToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Echo / Reverb -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnEchoToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🔊"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Echo / Reverb"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="EchoSwitch"
+							        Grid.Column="2"
+							        IsToggled="False"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnEchoToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Voice Preset -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnVoicePresetClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🎭"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Voice Preset"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="VoicePresetLabel"
+							       Grid.Column="2"
+							       Text="Normal"
+							       TextColor="#9999AA"
+							       FontSize="15"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="3"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Limiter Safety -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnLimiterToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🛡️"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Limiter Safety"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="LimiterSwitch"
+							        Grid.Column="2"
+							        IsToggled="True"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnLimiterToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Latency Mode -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnLatencyModeClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="⚡"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Latency Mode"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="LatencyModeLabel"
+							       Grid.Column="2"
+							       Text="Balanced"
+							       TextColor="#9999AA"
+							       FontSize="15"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="3"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
+
+				<!-- Section: Bluetooth & Devices -->
+				<Border StrokeThickness="1"
+				        Stroke="#4A90E233"
+				        BackgroundColor="#1E1E3888"
+				        Padding="0">
+					<Border.Shadow>
+						<Shadow Brush="#4A90E222"
+						        Radius="16"
+						        Opacity="0.4"
+						        Offset="0,2" />
+					</Border.Shadow>
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16" />
+					</Border.StrokeShape>
+
+					<VerticalStackLayout Spacing="0">
+						<!-- Section Header -->
+						<Label Text="🔵 Bluetooth &amp; Devices"
+						       FontSize="16"
+						       FontAttributes="Bold"
+						       TextColor="#CCCCEE"
+						       Margin="16,16,16,12" />
+
+						<!-- Preferred Device -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnPreferredDeviceClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="📱"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Preferred Device"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="PreferredDeviceLabel"
+							       Grid.Column="2"
+							       Text="None"
+							       TextColor="#9999AA"
+							       FontSize="15"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="3"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Auto Reconnect -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnAutoReconnectToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🔄"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Auto Reconnect"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="AutoReconnectSwitch"
+							        Grid.Column="2"
+							        IsToggled="True"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnAutoReconnectToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Scan on Launch -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnScanOnLaunchToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🔍"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Scan on Launch"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="ScanOnLaunchSwitch"
+							        Grid.Column="2"
+							        IsToggled="False"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnScanOnLaunchToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Open Bluetooth Settings -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnOpenBluetoothSettingsClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="⚙️"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Open Bluetooth Settings"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="2"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
+
+				<!-- Section: App Preferences -->
+				<Border StrokeThickness="1"
+				        Stroke="#4A90E233"
+				        BackgroundColor="#1E1E3888"
+				        Padding="0">
+					<Border.Shadow>
+						<Shadow Brush="#4A90E222"
+						        Radius="16"
+						        Opacity="0.4"
+						        Offset="0,2" />
+					</Border.Shadow>
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16" />
+					</Border.StrokeShape>
+
+					<VerticalStackLayout Spacing="0">
+						<!-- Section Header -->
+						<Label Text="🎨 App Preferences"
+						       FontSize="16"
+						       FontAttributes="Bold"
+						       TextColor="#CCCCEE"
+						       Margin="16,16,16,12" />
+
+						<!-- Theme -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnThemeClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🌙"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Theme"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="ThemeLabel"
+							       Grid.Column="2"
+							       Text="Dark"
+							       TextColor="#9999AA"
+							       FontSize="15"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="3"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Language -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnLanguageClicked" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="🌐"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Language"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Label x:Name="LanguageLabel"
+							       Grid.Column="2"
+							       Text="English"
+							       TextColor="#9999AA"
+							       FontSize="15"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="3"
+							       Text="›"
+							       FontSize="24"
+							       TextColor="#4A90E2"
+							       VerticalOptions="Center" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Haptics -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnHapticsToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="📳"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Haptics"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="HapticsSwitch"
+							        Grid.Column="2"
+							        IsToggled="True"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnHapticsToggled" />
+						</Grid>
+
+						<!-- Divider -->
+						<BoxView HeightRequest="1" Color="#333355" Margin="16,0" />
+
+						<!-- Animations -->
+						<Grid Padding="16,14" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+							<Grid.GestureRecognizers>
+								<TapGestureRecognizer Tapped="OnAnimationsToggled" />
+							</Grid.GestureRecognizers>
+
+							<Label Grid.Column="0"
+							       Text="✨"
+							       FontSize="20"
+							       VerticalOptions="Center" />
+
+							<Label Grid.Column="1"
+							       Text="Animations"
+							       TextColor="White"
+							       FontSize="16"
+							       VerticalOptions="Center" />
+
+							<Switch x:Name="AnimationsSwitch"
+							        Grid.Column="2"
+							        IsToggled="True"
+							        OnColor="#4A90E2"
+							        ThumbColor="White"
+							        Toggled="OnAnimationsToggled" />
+						</Grid>
+					</VerticalStackLayout>
+				</Border>
+
+				<!-- Section: Sign Out (Isolated at Bottom) -->
+				<Border x:Name="SignOutSection"
+				        StrokeThickness="1"
+				        Stroke="#FF525255"
+				        BackgroundColor="#1E1E3888"
+				        Padding="16"
+				        Margin="0,16,0,0">
+					<Border.Shadow>
+						<Shadow Brush="#FF525244"
+						        Radius="16"
+						        Opacity="0.3"
+						        Offset="0,2" />
+					</Border.Shadow>
+					<Border.StrokeShape>
+						<RoundRectangle CornerRadius="16" />
+					</Border.StrokeShape>
+					<Border.GestureRecognizers>
+						<TapGestureRecognizer Tapped="OnSignOutClicked" />
+					</Border.GestureRecognizers>
+
+					<Grid ColumnDefinitions="Auto,*" ColumnSpacing="12">
+						<Label Grid.Column="0"
+						       Text="🚪"
+						       FontSize="20"
+						       VerticalOptions="Center" />
+
+						<Label Grid.Column="1"
+						       Text="Sign Out"
+						       TextColor="#FF8888"
+						       FontSize="16"
+						       FontAttributes="Bold"
+						       VerticalOptions="Center" />
+					</Grid>
+				</Border>
+
+			</VerticalStackLayout>
+		</ScrollView>
+
+	</Grid>
+</ContentPage>
