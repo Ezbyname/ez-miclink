@@ -59,56 +59,9 @@ jobs:
           echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
           echo "report_date=$REPORT_DATE" >> $GITHUB_OUTPUT
 
-      - name: Send Email with Report
-        id: send_email
-        continue-on-error: true
-        uses: dawidd6/action-send-mail@v3
-        with:
-          server_address: smtp.gmail.com
-          server_port: 465
-          secure: true
-          username: ${{ secrets.SENDER_EMAIL }}
-          password: ${{ secrets.SENDER_APP_PASSWORD }}
-          ignore_cert: true
-          subject: '🎤 Voice Effect Discovery Report - ${{ steps.discovery.outputs.report_date }}'
-          to: yahalom.assets@gmail.com
-          from: Voice Discovery Bot <${{ secrets.SENDER_EMAIL }}>
-          body: |
-            Hi!
-
-            The voice effect discovery has completed! 🎵
-
-            📊 Discovery Report: ${{ steps.discovery.outputs.report_file }}
-            📅 Date: ${{ steps.discovery.outputs.report_date }}
-            🔍 Effects Analyzed: 10+
-
-            🔥 Top Trending:
-            1. ⭐⭐⭐⭐⭐ Anime Voice Filter (Very High Priority)
-            2. ⭐⭐⭐⭐ Demon/Devil Voice (Easy Implementation)
-            3. ⭐⭐⭐⭐ Auto-Tune Effect (High Demand)
-            4. ⭐⭐⭐ Ghost Voice (Quick Win)
-            5. ⭐⭐⭐ Baby Voice (Very Easy)
-
-            💡 Quick Action Items:
-            1. Review the attached report
-            2. Select 1-2 effects to implement
-            3. Run: /create-voice-effect [effect-name]
-
-            📎 Full report attached with complete DSP specifications!
-
-            Next discovery: 3 days from now
-
-            Happy coding! 🎤✨
-
-            ---
-            Voice Discovery Bot
-            Automated every 3 days
-          attachments: ${{ steps.discovery.outputs.report_file }}
-
-      - name: Fallback - Send Email via Python
-        if: steps.send_email.outcome == 'failure'
+      - name: Send Email with Report (Python)
         run: |
-          echo "Email action failed, trying Python fallback..."
+          echo "Sending email via Python SMTP..."
           python3 .github/workflows/send-email.py \
             "${{ steps.discovery.outputs.report_file }}" \
             "${{ secrets.SENDER_EMAIL }}" \
