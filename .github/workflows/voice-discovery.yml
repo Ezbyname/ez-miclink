@@ -59,14 +59,6 @@ jobs:
           echo "report_file=$REPORT_FILE" >> $GITHUB_OUTPUT
           echo "report_date=$REPORT_DATE" >> $GITHUB_OUTPUT
 
-      - name: Send Email with Report (Python)
-        run: |
-          echo "Sending email via Python SMTP..."
-          python3 .github/workflows/send-email.py \
-            "${{ steps.discovery.outputs.report_file }}" \
-            "${{ secrets.SENDER_EMAIL }}" \
-            "${{ secrets.SENDER_APP_PASSWORD }}"
-
       - name: Commit Report to Repository
         run: |
           git config --local user.email "github-actions[bot]@users.noreply.github.com"
@@ -75,9 +67,67 @@ jobs:
           git commit -m "docs: Add voice discovery report ${{ steps.discovery.outputs.report_date }}" || echo "No changes to commit"
           git push || echo "No changes to push"
 
+      - name: Create GitHub Issue with Report Summary
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const reportFile = '${{ steps.discovery.outputs.report_file }}';
+            const reportContent = fs.readFileSync(reportFile, 'utf8');
+
+            const issueBody = `## 🎤 Voice Effect Discovery Report
+
+            **Date:** ${{ steps.discovery.outputs.report_date }}
+            **Report File:** [\`${reportFile}\`](https://github.com/${{ github.repository }}/blob/main/${reportFile})
+
+            ---
+
+            ## 🔥 Top Trending Effects
+
+            1. ⭐⭐⭐⭐⭐ **Anime Voice Filter** (Very High Priority)
+            2. ⭐⭐⭐⭐ **Demon/Devil Voice** (Easy Implementation)
+            3. ⭐⭐⭐⭐ **Auto-Tune Effect** (High Demand)
+            4. ⭐⭐⭐ **Ghost Voice** (Quick Win)
+            5. ⭐⭐⭐ **Baby Voice** (Very Easy)
+
+            ---
+
+            ## 💡 Quick Action Items
+
+            1. ✅ Review the [full report](https://github.com/${{ github.repository }}/blob/main/${reportFile})
+            2. ✅ Select 1-2 effects to implement
+            3. ✅ Run: \`/create-voice-effect [effect-name]\`
+
+            ---
+
+            ## 📊 Full Report Preview
+
+            <details>
+            <summary>Click to expand full report</summary>
+
+            \`\`\`markdown
+            ${reportContent}
+            \`\`\`
+
+            </details>
+
+            ---
+
+            **Next Discovery:** 3 days from now
+
+            🤖 _Automated by Voice Discovery Bot_`;
+
+            await github.rest.issues.create({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              title: '🎤 Voice Effect Discovery - ${{ steps.discovery.outputs.report_date }}',
+              body: issueBody,
+              labels: ['voice-discovery', 'automation', 'discovered-effects']
+            });
+
       - name: Summary
         run: |
           echo "✅ Voice discovery completed!"
-          echo "📧 Email sent to: yahalom.assets@gmail.com"
           echo "📄 Report: ${{ steps.discovery.outputs.report_file }}"
-          echo "📅 Next run: $(date -d '+3 days' +%Y-%m-%d)"
+          echo "📝 GitHub Issue created with report summary"
+          echo "📅 Next run: 3 days from now"
