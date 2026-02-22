@@ -414,8 +414,99 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Device List (shows after scanning) -->
-                <VerticalStackLayout x:Name="DeviceListSection"
+                <!-- Compatible Devices (connected before) -->
+                <VerticalStackLayout x:Name="CompatibleDevicesSection"
+                                   Spacing="12"
+                                   IsVisible="False"
+                                   Margin="0,10,0,0">
+
+                    <Label Text="Compatible Devices"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#4CAF50"
+                           Margin="10,0,0,10" />
+
+                    <CollectionView x:Name="CompatibleDevicesView"
+                                  SelectionMode="Single"
+                                  SelectionChanged="OnDeviceSelected">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BackgroundColor="#1E1E38"
+                                       Stroke="#4CAF5080"
+                                       StrokeThickness="1"
+                                       Padding="16"
+                                       Margin="0,0,0,8">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="12" />
+                                    </Border.StrokeShape>
+                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
+                                        <Label Text="✅"
+                                               FontSize="28"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0" />
+                                        <VerticalStackLayout Grid.Column="1"
+                                                           Spacing="4"
+                                                           VerticalOptions="Center">
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="White" />
+                                            <Label Text="{Binding Address}"
+                                                   FontSize="12"
+                                                   TextColor="#8E8E93" />
+                                        </VerticalStackLayout>
+
+                                        <!-- Edit Name Button -->
+                                        <Border Grid.Column="2"
+                                                BackgroundColor="Transparent"
+                                                Stroke="#4A90E266"
+                                                StrokeThickness="1"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                VerticalOptions="Center"
+                                                Margin="0,0,8,0">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="20" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnEditDeviceNameClicked" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="✏️"
+                                                   FontSize="18"
+                                                   Opacity="0.7"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+
+                                        <!-- Delete Button -->
+                                        <Border Grid.Column="3"
+                                                BackgroundColor="Transparent"
+                                                Stroke="#FB718566"
+                                                StrokeThickness="1"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="20" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnDeleteDeviceClicked" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="🗑️"
+                                                   FontSize="18"
+                                                   Opacity="0.7"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Available Devices (new discoveries) -->
+                <VerticalStackLayout x:Name="AvailableDevicesSection"
                                    Spacing="12"
                                    IsVisible="False"
                                    Margin="0,10,0,0">
@@ -426,7 +517,7 @@
                            TextColor="#CCCCCC"
                            Margin="10,0,0,10" />
 
-                    <CollectionView x:Name="DeviceCollectionView"
+                    <CollectionView x:Name="AvailableDevicesView"
                                   SelectionMode="Single"
                                   SelectionChanged="OnDeviceSelected">
                         <CollectionView.ItemTemplate>
@@ -478,7 +569,7 @@
                                                    VerticalOptions="Center" />
                                         </Border>
 
-                                        <!-- Delete Button (NEW STYLE) -->
+                                        <!-- Delete Button -->
                                         <Border Grid.Column="3"
                                                 BackgroundColor="Transparent"
                                                 Stroke="#FB718566"

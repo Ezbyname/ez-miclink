@@ -48,6 +48,23 @@ public partial class MainPage : ContentPage
 		SetState(UIState.Initial);
 	}
 
+	protected override async void OnAppearing()
+	{
+		base.OnAppearing();
+
+		// Auto-scan for devices when landing on home page
+		System.Diagnostics.Debug.WriteLine("[MainPage] OnAppearing - Starting auto-scan");
+
+		// Small delay to ensure page is fully loaded
+		await Task.Delay(500);
+
+		// Only auto-scan if we're in Initial state (not already connected)
+		if (_currentState == UIState.Initial && !_bluetoothService.IsConnected)
+		{
+			await StartScanning();
+		}
+	}
+
 	private async void RequestPermissions()
 	{
 		try
@@ -111,7 +128,8 @@ public partial class MainPage : ContentPage
 		{
 			// Hide everything first
 			MainCard.IsVisible = false;
-			DeviceListSection.IsVisible = false;
+			CompatibleDevicesSection.IsVisible = false;
+			AvailableDevicesSection.IsVisible = false;
 			DeviceInfoSection.IsVisible = false;
 			AudioControlsSection.IsVisible = false;
 			MessageSection.IsVisible = false;
@@ -125,9 +143,10 @@ public partial class MainPage : ContentPage
 					break;
 
 				case UIState.DeviceList:
-					DeviceListSection.IsVisible = true;
-					// Clear selection to allow re-selecting the same device
-					DeviceCollectionView.SelectedItem = null;
+					// Show sections based on what's populated (handled in StartScanning)
+					// Clear selections to allow re-selecting the same device
+					CompatibleDevicesView.SelectedItem = null;
+					AvailableDevicesView.SelectedItem = null;
 					break;
 
 				case UIState.DeviceSelected:
@@ -354,7 +373,33 @@ public partial class MainPage : ContentPage
 
 			if (_availableDevices.Any())
 			{
-				DeviceCollectionView.ItemsSource = _availableDevices;
+				// Split devices into compatible (connected before) and available (new)
+				var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
+
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Split results: {compatible.Count} compatible, {available.Count} available");
+
+				// Show compatible devices section if we have any
+				if (compatible.Any())
+				{
+					CompatibleDevicesView.ItemsSource = compatible;
+					CompatibleDevicesSection.IsVisible = true;
+				}
+				else
+				{
+					CompatibleDevicesSection.IsVisible = false;
+				}
+
+				// Show available devices section if we have any
+				if (available.Any())
+				{
+					AvailableDevicesView.ItemsSource = available;
+					AvailableDevicesSection.IsVisible = true;
+				}
+				else
+				{
+					AvailableDevicesSection.IsVisible = false;
+				}
+
 				SetState(UIState.DeviceList);
 			}
 			else
@@ -469,6 +514,10 @@ public partial class MainPage : ContentPage
 
 			if (success)
 			{
+				// Mark this device as successfully connected in history
+				Services.DeviceConnectionHistory.MarkDeviceAsConnected(_selectedDevice.Address);
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device marked as compatible: {_selectedDevice.Address}");
+
 				SetState(UIState.Connected);
 
 				// Show success message after animation
@@ -670,11 +719,14 @@ public partial class MainPage : ContentPage
 
 						System.Diagnostics.Debug.WriteLine($"[MainPage] Updated device.Name to: '{device.Name}'");
 
-						// Refresh the collection view to show the new name
-						DeviceCollectionView.ItemsSource = null;
-						DeviceCollectionView.ItemsSource = _availableDevices;
+						// Refresh both collection views to show the new name
+						var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
+						CompatibleDevicesView.ItemsSource = null;
+						CompatibleDevicesView.ItemsSource = compatible;
+						AvailableDevicesView.ItemsSource = null;
+						AvailableDevicesView.ItemsSource = available;
 
-						System.Diagnostics.Debug.WriteLine($"[MainPage] Collection view refreshed");
+						System.Diagnostics.Debug.WriteLine($"[MainPage] Collection views refreshed");
 					}
 					else
 					{
@@ -726,8 +778,11 @@ public partial class MainPage : ContentPage
 
 					// Refresh device list
 					_availableDevices.Remove(device);
-					DeviceCollectionView.ItemsSource = null;
-					DeviceCollectionView.ItemsSource = _availableDevices;
+					var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
+					CompatibleDevicesView.ItemsSource = null;
+					CompatibleDevicesView.ItemsSource = compatible;
+					AvailableDevicesView.ItemsSource = null;
+					AvailableDevicesView.ItemsSource = available;
 
 					System.Diagnostics.Debug.WriteLine($"[MainPage] Device forgotten: {deviceName}");
 				}
