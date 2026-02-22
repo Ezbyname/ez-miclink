@@ -14,6 +14,10 @@ public partial class MainPage : ContentPage
 	private List<BluetoothDevice> _availableDevices = new();
 	private BluetoothDevice? _selectedDevice;
 
+	// Animation cancellation tokens
+	private CancellationTokenSource? _magnifyingGlassAnimationCts;
+	private CancellationTokenSource? _dotsAnimationCts;
+
 	private enum UIState
 	{
 		Initial,        // Just scan button
@@ -63,6 +67,14 @@ public partial class MainPage : ContentPage
 		{
 			await StartScanning();
 		}
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+
+		// Stop any running animations
+		StopScanningAnimations();
 	}
 
 	private async void RequestPermissions()
@@ -284,6 +296,9 @@ public partial class MainPage : ContentPage
 			ScanningIndicator.IsRunning = true;
 			ScanningIndicator.IsVisible = true;
 
+			// Start scanning animations
+			StartScanningAnimations();
+
 			// Check and request Bluetooth permissions
 			var hasPermissions = await CheckBluetoothPermissionsAsync();
 			if (!hasPermissions)
@@ -423,6 +438,9 @@ public partial class MainPage : ContentPage
 		}
 		finally
 		{
+			// Stop scanning animations
+			StopScanningAnimations();
+
 			ScanButton.IsEnabled = true;
 			ScanningIndicator.IsRunning = false;
 			ScanningIndicator.IsVisible = false;
@@ -814,6 +832,105 @@ public partial class MainPage : ContentPage
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Settings navigation error: {ex.Message}");
+		}
+	}
+
+	// ==================== Scanning Animations ====================
+
+	private async void StartScanningAnimations()
+	{
+		// Cancel any existing animations
+		StopScanningAnimations();
+
+		// Start magnifying glass animation
+		_magnifyingGlassAnimationCts = new CancellationTokenSource();
+		_ = AnimateMagnifyingGlass(_magnifyingGlassAnimationCts.Token);
+
+		// Start dots animation
+		_dotsAnimationCts = new CancellationTokenSource();
+		_ = AnimateDots(_dotsAnimationCts.Token);
+	}
+
+	private void StopScanningAnimations()
+	{
+		// Cancel magnifying glass animation
+		_magnifyingGlassAnimationCts?.Cancel();
+		_magnifyingGlassAnimationCts?.Dispose();
+		_magnifyingGlassAnimationCts = null;
+
+		// Cancel dots animation
+		_dotsAnimationCts?.Cancel();
+		_dotsAnimationCts?.Dispose();
+		_dotsAnimationCts = null;
+
+		// Reset to original text
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			ScanButtonText.Text = "Scan for Devices";
+			MagnifyingGlass.TranslationY = 0;
+			MagnifyingGlass.Scale = 1.0;
+		});
+	}
+
+	private async Task AnimateMagnifyingGlass(CancellationToken cancellationToken)
+	{
+		try
+		{
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				// Move up and scale up
+				await MagnifyingGlass.TranslateTo(0, -8, 400, Easing.SinInOut);
+				await MagnifyingGlass.ScaleTo(1.2, 200, Easing.SinOut);
+
+				if (cancellationToken.IsCancellationRequested) break;
+
+				// Move down and scale down
+				await MagnifyingGlass.TranslateTo(0, 0, 400, Easing.SinInOut);
+				await MagnifyingGlass.ScaleTo(1.0, 200, Easing.SinIn);
+
+				if (cancellationToken.IsCancellationRequested) break;
+
+				// Small pause
+				await Task.Delay(100, cancellationToken);
+			}
+		}
+		catch (TaskCanceledException)
+		{
+			// Animation cancelled, reset position
+			await MainThread.InvokeOnMainThreadAsync(async () =>
+			{
+				await MagnifyingGlass.TranslateTo(0, 0, 200);
+				await MagnifyingGlass.ScaleTo(1.0, 200);
+			});
+		}
+	}
+
+	private async Task AnimateDots(CancellationToken cancellationToken)
+	{
+		try
+		{
+			int dotCount = 1;
+			while (!cancellationToken.IsCancellationRequested)
+			{
+				string dots = new string('.', dotCount);
+				MainThread.BeginInvokeOnMainThread(() =>
+				{
+					ScanButtonText.Text = $"Scanning for Devices{dots}";
+				});
+
+				dotCount++;
+				if (dotCount > 3) dotCount = 1;
+
+				await Task.Delay(500, cancellationToken);
+			}
+		}
+		catch (TaskCanceledException)
+		{
+			// Animation cancelled, reset text
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				ScanButtonText.Text = "Scan for Devices";
+			});
 		}
 	}
 }

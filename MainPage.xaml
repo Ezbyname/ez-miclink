@@ -87,12 +87,14 @@
                     <Grid Padding="0,18">
                         <HorizontalStackLayout HorizontalOptions="Center"
                                              Spacing="12">
-                            <Label Text="Scan for Devices"
+                            <Label x:Name="ScanButtonText"
+                                   Text="Scan for Devices"
                                    FontSize="20"
                                    FontAttributes="Bold"
                                    TextColor="White"
                                    VerticalOptions="Center" />
-                            <Label Text="🔍"
+                            <Label x:Name="MagnifyingGlass"
+                                   Text="🔍"
                                    FontSize="24"
                                    VerticalOptions="Center" />
                         </HorizontalStackLayout>

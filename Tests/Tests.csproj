@@ -5,14 +5,7 @@
     <TargetFramework>net9.0</TargetFramework>
     <Nullable>enable</Nullable>
     <RootNamespace>BluetoothMicrophoneApp.Tests</RootNamespace>
+    <StartupObject>BluetoothMicrophoneApp.Tests.BuildAndInstallTests</StartupObject>
   </PropertyGroup>
-
-  <ItemGroup>
-    <!-- Link DSP files directly for testing (without platform-specific dependencies) -->
-    <Compile Include="..\Audio\DSP\*.cs" Link="Audio\DSP\%(Filename)%(Extension)" />
-
-    <!-- Link Services files for testing -->
-    <Compile Include="..\Services\DeviceNameManager.cs" Link="Services\%(Filename)%(Extension)" />
-  </ItemGroup>
 
 </Project>
