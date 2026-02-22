@@ -213,8 +213,8 @@ public class PodcastVoiceEffect : IAudioEffect
             if (aboveThreshold)
             {
                 // Attack phase - gate opening
-                float coef = _gateAttackCoef;
-                _gateEnvelope = _gateEnvelope * coef + 1f * (1f - coef);
+                float gateCoef = _gateAttackCoef;
+                _gateEnvelope = _gateEnvelope * gateCoef + 1f * (1f - gateCoef);
                 _gateHoldCounter = _gateHoldSamples;
             }
             else
@@ -227,8 +227,8 @@ public class PodcastVoiceEffect : IAudioEffect
                 else
                 {
                     // Release phase - gate closing
-                    float coef = _gateReleaseCoef;
-                    _gateEnvelope = _gateEnvelope * coef + 0f * (1f - coef);
+                    float gateCoef = _gateReleaseCoef;
+                    _gateEnvelope = _gateEnvelope * gateCoef + 0f * (1f - gateCoef);
                 }
             }
 
@@ -249,8 +249,8 @@ public class PodcastVoiceEffect : IAudioEffect
             // STAGE 5: Compressor (even out dynamics)
             // RMS envelope follower
             float sampleSq = sample * sample;
-            float coef = sampleSq > _compRmsEnvelope ? _compAttackCoef : _compReleaseCoef;
-            _compRmsEnvelope = _compRmsEnvelope * coef + sampleSq * (1f - coef);
+            float compCoef = sampleSq > _compRmsEnvelope ? _compAttackCoef : _compReleaseCoef;
+            _compRmsEnvelope = _compRmsEnvelope * compCoef + sampleSq * (1f - compCoef);
             float rmsLevel = MathF.Sqrt(MathF.Max(_compRmsEnvelope, 1e-10f));
 
             // Soft-knee compression

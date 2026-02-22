@@ -182,11 +182,6 @@ public class AudioEngine
                 BuildAnimeVoicePreset();
                 break;
 
-            case "podcast":
-            case "podcast voice":
-                BuildPodcastPreset();
-                break;
-
             case "clean":
             case "none":
                 BuildCleanPreset();
@@ -267,57 +262,27 @@ public class AudioEngine
     private void BuildPodcastPreset()
     {
         // Professional podcast voice processing
-        // Goal: Clear, consistent, broadcast-quality
+        // Goal: Broadcast-quality voice with -16 LUFS loudness (industry standard)
+        // Signal chain: HPF → Gate → De-esser → EQ → Compression → Limiter
 
-        // 1. Noise Gate - Remove background noise
-        var gate = new NoiseGateEffect();
-        gate.SetParameters(new NoiseGateEffect.NoiseGateParameters
+        // 1. Podcast Voice Effect (complete broadcast chain)
+        var podcast = new PodcastVoiceEffect();
+        podcast.SetParameters(new PodcastVoiceEffect.PodcastParameters
         {
-            ThresholdDb = -45f,
-            AttackMs = 1f,
-            ReleaseMs = 150f,
-            FloorGain = -80f,
-            KneeDb = 6f
+            HighPassFreq = 80f,              // Remove rumble
+            GateThresholdDb = -45f,          // Remove background noise
+            DeEsserAmount = 0.5f,            // Control sibilance (moderate)
+            PresenceBoostDb = 4f,            // Voice clarity and intelligibility
+            AirBoostDb = 2f,                 // Professional sheen
+            CompressionRatio = 4f,           // Broadcast standard (4:1)
+            CompressionThresholdDb = -18f,   // Catch most dynamic range
+            LimiterEnabled = true            // Safety net, prevent clipping
         });
-        _effectChain.AddEffect(gate);
+        _effectChain.AddEffect(podcast);
 
-        // 2. EQ - Shape tone (reduce bass rumble, boost presence)
-        var eq = new ThreeBandEQEffect();
-        eq.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
-        {
-            LowGainDb = -2f,      // Reduce bass rumble
-            LowFreq = 100f,
-            MidGainDb = 1f,       // Slight body boost
-            MidFreq = 800f,
-            MidQ = 1.0f,
-            HighGainDb = 3f,      // Presence boost
-            HighFreq = 4000f
-        });
-        _effectChain.AddEffect(eq);
-
-        // 3. Compressor - Even out dynamics
-        var compressor = new CompressorEffect();
-        compressor.SetParameters(new CompressorEffect.CompressorParameters
-        {
-            ThresholdDb = -20f,
-            Ratio = 4f,
-            AttackMs = 15f,
-            ReleaseMs = 150f,
-            KneeDb = 8f,
-            AutoMakeupGain = true
-        });
-        _effectChain.AddEffect(compressor);
-
-        // 4. Limiter - Final safety
-        var limiter = new LimiterEffect();
-        limiter.SetParameters(new LimiterEffect.LimiterParameters
-        {
-            CeilingDb = -0.5f,
-            AttackMs = 0.5f,
-            ReleaseMs = 100f,
-            LookaheadMs = 3f
-        });
-        _effectChain.AddEffect(limiter);
+        // Note: PodcastVoiceEffect is a complete broadcast chain.
+        // It includes all stages (HPF, gate, de-esser, EQ, compressor, limiter).
+        // No additional effects needed - this is broadcast-ready audio.
     }
 
     private void BuildStageMCPreset()
@@ -849,32 +814,6 @@ public class AudioEngine
             LookaheadMs = 3f
         });
         _effectChain.AddEffect(limiter);
-    }
-
-    private void BuildPodcastPreset()
-    {
-        // Professional podcast voice processing
-        // Goal: Broadcast-quality voice with -16 LUFS loudness (industry standard)
-        // Signal chain: HPF → Gate → De-esser → EQ → Compression → Limiter
-
-        // 1. Podcast Voice Effect (complete broadcast chain)
-        var podcast = new PodcastVoiceEffect();
-        podcast.SetParameters(new PodcastVoiceEffect.PodcastParameters
-        {
-            HighPassFreq = 80f,              // Remove rumble
-            GateThresholdDb = -45f,          // Remove background noise
-            DeEsserAmount = 0.5f,            // Control sibilance (moderate)
-            PresenceBoostDb = 4f,            // Voice clarity and intelligibility
-            AirBoostDb = 2f,                 // Professional sheen
-            CompressionRatio = 4f,           // Broadcast standard (4:1)
-            CompressionThresholdDb = -18f,   // Catch most dynamic range
-            LimiterEnabled = true            // Safety net, prevent clipping
-        });
-        _effectChain.AddEffect(podcast);
-
-        // Note: PodcastVoiceEffect is a complete broadcast chain.
-        // It includes all stages (HPF, gate, de-esser, EQ, compressor, limiter).
-        // No additional effects needed - this is broadcast-ready audio.
     }
 }
 
