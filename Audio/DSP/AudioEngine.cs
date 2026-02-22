@@ -178,6 +178,10 @@ public class AudioEngine
                 BuildChipmunkPreset();
                 break;
 
+            case "anime":
+                BuildAnimeVoicePreset();
+                break;
+
             case "clean":
             case "none":
                 BuildCleanPreset();
@@ -706,6 +710,61 @@ public class AudioEngine
         _effectChain.AddEffect(helium);
 
         // 3. Compressor
+        var compressor = new CompressorEffect();
+        compressor.SetParameters(new CompressorEffect.CompressorParameters
+        {
+            ThresholdDb = -18f,
+            Ratio = 3f,
+            AttackMs = 10f,
+            ReleaseMs = 100f,
+            KneeDb = 8f,
+            AutoMakeupGain = true
+        });
+        _effectChain.AddEffect(compressor);
+
+        // 4. Limiter
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildAnimeVoicePreset()
+    {
+        // Anime voice effect with pitch and formant shifting
+        // Goal: Bright, energetic anime character voice
+        // Popular on TikTok and social media content
+
+        // 1. Noise Gate
+        var gate = new NoiseGateEffect();
+        gate.SetParameters(new NoiseGateEffect.NoiseGateParameters
+        {
+            ThresholdDb = -45f,
+            AttackMs = 1f,
+            ReleaseMs = 150f,
+            FloorGain = -80f,
+            KneeDb = 6f
+        });
+        _effectChain.AddEffect(gate);
+
+        // 2. Anime Voice Effect (pitch + formant shift + brightness + air)
+        var anime = new AnimeVoiceEffect();
+        anime.SetParameters(new AnimeVoiceEffect.AnimeParameters
+        {
+            PitchSemitones = 5f,        // Up 5 semitones (anime character tone)
+            FormantShiftPercent = 15f,   // Raise formants 15% (smaller vocal tract)
+            BrightnessDb = 4f,           // Add clarity and presence
+            AirDb = 3f,                  // Add sweet, airy quality
+            Intensity = 1.0f             // Full effect
+        });
+        _effectChain.AddEffect(anime);
+
+        // 3. Compressor (already included in effect, but add extra polish)
         var compressor = new CompressorEffect();
         compressor.SetParameters(new CompressorEffect.CompressorParameters
         {
