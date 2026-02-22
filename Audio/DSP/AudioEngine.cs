@@ -561,8 +561,9 @@ public class AudioEngine
 
     private void BuildStadiumPreset()
     {
-        // Stadium/arena echo effect
-        // Goal: Large space with echo
+        // Stadium/arena reverb effect with extended decay
+        // Goal: Large venue space simulation (2.5-4.5s decay for true stadium)
+        // Industry standard: Concert hall acoustics
 
         // 1. Noise Gate
         var gate = new NoiseGateEffect();
@@ -576,7 +577,7 @@ public class AudioEngine
         });
         _effectChain.AddEffect(gate);
 
-        // 2. EQ
+        // 2. EQ - Clean presence for large space
         var eq = new ThreeBandEQEffect();
         eq.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
         {
@@ -603,7 +604,20 @@ public class AudioEngine
         });
         _effectChain.AddEffect(compressor);
 
-        // 4. Echo Effect
+        // 4. Stadium Reverb (extended decay time for large venue)
+        var stadium = new KaraokeEffect();
+        stadium.SetParameters(new KaraokeEffect.KaraokeParameters
+        {
+            RoomSize = 1.0f,          // Maximum room size for stadium
+            DecayTime = 3.5f,         // Extended decay: 2.5-4.5s typical for stadium
+            Damping = 0.4f,           // Less damping for larger space
+            Mix = 0.45f,              // More wet for stadium ambience
+            CompressionThreshold = -20f, // Built-in compression
+            PresenceBoost = 2f        // Moderate presence
+        });
+        _effectChain.AddEffect(stadium);
+
+        // 5. Echo Effect (for distinct reflections)
         var echo = new EchoDelayEffect();
         echo.SetParameters(new EchoDelayEffect.EchoDelayParameters
         {

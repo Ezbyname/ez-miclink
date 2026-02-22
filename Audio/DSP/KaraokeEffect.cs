@@ -76,7 +76,7 @@ public class KaraokeEffect : IAudioEffect
         /// <summary>Room size (0.3=small, 0.7=medium, 1.0=large)</summary>
         public float RoomSize { get; set; } = 0.7f;
 
-        /// <summary>Reverb decay time (0.3 to 1.5 seconds, typical 0.8)</summary>
+        /// <summary>Reverb decay time (0.3 to 4.5 seconds, typical 0.8 for karaoke, 2.5-4.5 for stadium)</summary>
         public float DecayTime { get; set; } = 0.8f;
 
         /// <summary>High-frequency damping (0-1, typical 0.6)</summary>
@@ -176,7 +176,7 @@ public class KaraokeEffect : IAudioEffect
         {
             // Clamp parameters
             p.RoomSize = Math.Clamp(p.RoomSize, 0.3f, 1.0f);
-            p.DecayTime = Math.Clamp(p.DecayTime, 0.3f, 1.5f);
+            p.DecayTime = Math.Clamp(p.DecayTime, 0.3f, 4.5f); // Extended for stadium reverb
             p.Damping = Math.Clamp(p.Damping, 0f, 1f);
             p.Mix = Math.Clamp(p.Mix, 0f, 1f);
             p.CompressionThreshold = Math.Clamp(p.CompressionThreshold, -30f, -10f);
