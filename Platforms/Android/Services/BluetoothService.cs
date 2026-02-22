@@ -167,27 +167,9 @@ public class BluetoothService : IBluetoothService
 
         try
         {
-            // Step 1: Add already paired devices
-            Log("Step 1: Getting bonded devices...");
-            var bondedDevices = _bluetoothAdapter.BondedDevices;
-            if (bondedDevices != null)
-            {
-                foreach (var device in bondedDevices)
-                {
-                    if (device?.Name != null && !string.IsNullOrWhiteSpace(device.Address))
-                    {
-                        var appDevice = new AppBluetoothDevice
-                        {
-                            Name = device.Name,
-                            Address = device.Address,
-                            IsPaired = true
-                        };
-                        _discoveredDevices.Add(appDevice);
-                        Log($"  → Bonded: {device.Name} ({device.Address})");
-                    }
-                }
-            }
-            Log($"Found {_discoveredDevices.Count} bonded devices");
+            // Note: We only show devices that are actively discovered in this scan
+            // Old paired devices that are not nearby will NOT be shown
+            Log("Step 1: Scanning for devices currently nearby (not showing old paired devices)...");
 
             // Step 2: Cancel any ongoing discovery
             if (_bluetoothAdapter.IsDiscovering)
@@ -198,7 +180,7 @@ public class BluetoothService : IBluetoothService
             }
 
             // Step 3: Register receiver for discovery
-            Log("Step 2: Starting discovery for nearby devices...");
+            Log("Step 3: Starting active discovery for nearby devices...");
             _discoveryReceiver = new BluetoothDiscoveryReceiver(_discoveredDevices);
 
             var filter = new IntentFilter();
