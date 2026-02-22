@@ -71,4 +71,10 @@
 		<PackageReference Include="Microsoft.Extensions.Logging.Debug" Version="9.0.8" />
 	</ItemGroup>
 
+	<ItemGroup>
+		<!-- Exclude Tests folder from main app compilation -->
+		<Compile Remove="Tests\**\*.cs" />
+		<None Include="Tests\**\*.cs" />
+	</ItemGroup>
+
 </Project>
