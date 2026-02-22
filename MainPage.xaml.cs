@@ -842,11 +842,17 @@ public partial class MainPage : ContentPage
 		// Cancel any existing animations
 		StopScanningAnimations();
 
-		// Start magnifying glass animation
+		// Set scanning text (stays constant during animation)
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			ScanButtonText.Text = "Scanning for Devices";
+		});
+
+		// Start magnifying glass animation (figure-8 pattern)
 		_magnifyingGlassAnimationCts = new CancellationTokenSource();
 		_ = AnimateMagnifyingGlass(_magnifyingGlassAnimationCts.Token);
 
-		// Start dots animation
+		// Start dots animation (. → .. → ...)
 		_dotsAnimationCts = new CancellationTokenSource();
 		_ = AnimateDots(_dotsAnimationCts.Token);
 	}
@@ -863,12 +869,13 @@ public partial class MainPage : ContentPage
 		_dotsAnimationCts?.Dispose();
 		_dotsAnimationCts = null;
 
-		// Reset to original text
+		// Reset to original state
 		MainThread.BeginInvokeOnMainThread(() =>
 		{
 			ScanButtonText.Text = "Scan for Devices";
+			DotsLabel.Text = "";
+			MagnifyingGlass.TranslationX = 0;
 			MagnifyingGlass.TranslationY = 0;
-			MagnifyingGlass.Scale = 1.0;
 		});
 	}
 
@@ -876,22 +883,31 @@ public partial class MainPage : ContentPage
 	{
 		try
 		{
+			// Figure-8 (lemniscate) animation parameters
+			const double amplitude = 15.0;  // Size of the figure-8
+			const int steps = 60;            // Number of steps per cycle
+			const int delayMs = 30;          // Delay between steps
+
 			while (!cancellationToken.IsCancellationRequested)
 			{
-				// Move up and scale up
-				await MagnifyingGlass.TranslateTo(0, -8, 400, Easing.SinInOut);
-				await MagnifyingGlass.ScaleTo(1.2, 200, Easing.SinOut);
+				// Animate one complete figure-8 cycle
+				for (int i = 0; i < steps; i++)
+				{
+					if (cancellationToken.IsCancellationRequested) break;
 
-				if (cancellationToken.IsCancellationRequested) break;
+					// Parametric equations for figure-8 (lemniscate)
+					// Starting from left side: t goes from 0 to 2π
+					double t = (i / (double)steps) * 2 * Math.PI;
 
-				// Move down and scale down
-				await MagnifyingGlass.TranslateTo(0, 0, 400, Easing.SinInOut);
-				await MagnifyingGlass.ScaleTo(1.0, 200, Easing.SinIn);
+					// Horizontal figure-8 pattern
+					double x = amplitude * Math.Cos(t);
+					double y = (amplitude / 2) * Math.Sin(2 * t);
 
-				if (cancellationToken.IsCancellationRequested) break;
+					await MagnifyingGlass.TranslateTo(x, y, delayMs, Easing.Linear);
+				}
 
-				// Small pause
-				await Task.Delay(100, cancellationToken);
+				// Small pause before repeating
+				await Task.Delay(50, cancellationToken);
 			}
 		}
 		catch (TaskCanceledException)
@@ -899,8 +915,7 @@ public partial class MainPage : ContentPage
 			// Animation cancelled, reset position
 			await MainThread.InvokeOnMainThreadAsync(async () =>
 			{
-				await MagnifyingGlass.TranslateTo(0, 0, 200);
-				await MagnifyingGlass.ScaleTo(1.0, 200);
+				await MagnifyingGlass.TranslateTo(0, 0, 200, Easing.CubicOut);
 			});
 		}
 	}
@@ -915,7 +930,8 @@ public partial class MainPage : ContentPage
 				string dots = new string('.', dotCount);
 				MainThread.BeginInvokeOnMainThread(() =>
 				{
-					ScanButtonText.Text = $"Scanning for Devices{dots}";
+					// Keep base text constant, only change dots
+					DotsLabel.Text = dots;
 				});
 
 				dotCount++;
@@ -926,10 +942,10 @@ public partial class MainPage : ContentPage
 		}
 		catch (TaskCanceledException)
 		{
-			// Animation cancelled, reset text
+			// Animation cancelled, reset dots
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
-				ScanButtonText.Text = "Scan for Devices";
+				DotsLabel.Text = "";
 			});
 		}
 	}
