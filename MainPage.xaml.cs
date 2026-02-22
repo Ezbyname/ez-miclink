@@ -609,9 +609,21 @@ public partial class MainPage : ContentPage
 
 			if (!string.IsNullOrWhiteSpace(result))
 			{
-				DeviceNameManager.SetCustomName(_selectedDevice.Address, result);
-				DeviceNameLabel.Text = result;
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Device renamed: {_selectedDevice.Name} → {result}");
+				bool success = DeviceNameManager.SetCustomName(_selectedDevice.Address, result);
+
+				if (success)
+				{
+					DeviceNameLabel.Text = result;
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Device renamed: {_selectedDevice.Name} → {result}");
+				}
+				else
+				{
+					System.Diagnostics.Debug.WriteLine($"[MainPage] ERROR: Failed to save device name!");
+					await DisplayAlert(
+						"Save Failed",
+						"Failed to save the device name. Please try again.",
+						"OK");
+				}
 			}
 		}
 		catch (Exception ex)
@@ -647,21 +659,31 @@ public partial class MainPage : ContentPage
 				if (!string.IsNullOrWhiteSpace(result))
 				{
 					System.Diagnostics.Debug.WriteLine($"[MainPage] Calling SetCustomName...");
-					DeviceNameManager.SetCustomName(device.Address, result);
+					bool success = DeviceNameManager.SetCustomName(device.Address, result);
 
-					System.Diagnostics.Debug.WriteLine($"[MainPage] SetCustomName completed");
+					System.Diagnostics.Debug.WriteLine($"[MainPage] SetCustomName completed with success={success}");
 
-					// Update the device name in the list
-					device.Name = result;
+					if (success)
+					{
+						// Update the device name in the list
+						device.Name = result;
 
-					System.Diagnostics.Debug.WriteLine($"[MainPage] Updated device.Name to: '{device.Name}'");
+						System.Diagnostics.Debug.WriteLine($"[MainPage] Updated device.Name to: '{device.Name}'");
 
-					// Refresh the collection view to show the new name
-					DeviceCollectionView.ItemsSource = null;
-					DeviceCollectionView.ItemsSource = _availableDevices;
+						// Refresh the collection view to show the new name
+						DeviceCollectionView.ItemsSource = null;
+						DeviceCollectionView.ItemsSource = _availableDevices;
 
-					System.Diagnostics.Debug.WriteLine($"[MainPage] Collection view refreshed");
-					System.Diagnostics.Debug.WriteLine($"[MainPage] Device renamed: {device.Address} → {result}");
+						System.Diagnostics.Debug.WriteLine($"[MainPage] Collection view refreshed");
+					}
+					else
+					{
+						System.Diagnostics.Debug.WriteLine($"[MainPage] ERROR: Failed to save device name!");
+						await DisplayAlert(
+							"Save Failed",
+							"Failed to save the device name. This may be a storage issue. Please check app permissions.",
+							"OK");
+					}
 				}
 				else
 				{
