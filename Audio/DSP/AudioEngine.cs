@@ -182,6 +182,11 @@ public class AudioEngine
                 BuildAnimeVoicePreset();
                 break;
 
+            case "podcast":
+            case "podcast voice":
+                BuildPodcastPreset();
+                break;
+
             case "clean":
             case "none":
                 BuildCleanPreset();
@@ -844,6 +849,32 @@ public class AudioEngine
             LookaheadMs = 3f
         });
         _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildPodcastPreset()
+    {
+        // Professional podcast voice processing
+        // Goal: Broadcast-quality voice with -16 LUFS loudness (industry standard)
+        // Signal chain: HPF → Gate → De-esser → EQ → Compression → Limiter
+
+        // 1. Podcast Voice Effect (complete broadcast chain)
+        var podcast = new PodcastVoiceEffect();
+        podcast.SetParameters(new PodcastVoiceEffect.PodcastParameters
+        {
+            HighPassFreq = 80f,              // Remove rumble
+            GateThresholdDb = -45f,          // Remove background noise
+            DeEsserAmount = 0.5f,            // Control sibilance (moderate)
+            PresenceBoostDb = 4f,            // Voice clarity and intelligibility
+            AirBoostDb = 2f,                 // Professional sheen
+            CompressionRatio = 4f,           // Broadcast standard (4:1)
+            CompressionThresholdDb = -18f,   // Catch most dynamic range
+            LimiterEnabled = true            // Safety net, prevent clipping
+        });
+        _effectChain.AddEffect(podcast);
+
+        // Note: PodcastVoiceEffect is a complete broadcast chain.
+        // It includes all stages (HPF, gate, de-esser, EQ, compressor, limiter).
+        // No additional effects needed - this is broadcast-ready audio.
     }
 }
 
