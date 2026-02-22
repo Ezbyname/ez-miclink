@@ -251,9 +251,14 @@ public partial class MainPage : ContentPage
 	// Event Handlers
 	private async void OnScanClicked(object? sender, EventArgs e)
 	{
+		await StartScanning();
+	}
+
+	private async Task StartScanning()
+	{
 		try
 		{
-			System.Diagnostics.Debug.WriteLine("[MainPage] Scan button clicked");
+			System.Diagnostics.Debug.WriteLine("[MainPage] Starting scan for devices");
 
 			// Show loading
 			ScanButton.IsEnabled = false;
@@ -472,14 +477,43 @@ public partial class MainPage : ContentPage
 			}
 			else
 			{
-				SetState(UIState.Failed);
+				// Connection failed - show alert and rescan
+				await HandleConnectionFailure(_selectedDevice.Name);
 			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Connection error: {ex.Message}");
-			SetState(UIState.Failed);
+			// Connection failed with exception - show alert and rescan
+			await HandleConnectionFailure(_selectedDevice?.Name ?? "device");
 		}
+	}
+
+	private async Task HandleConnectionFailure(string deviceName)
+	{
+		System.Diagnostics.Debug.WriteLine($"[MainPage] Handling connection failure for {deviceName}");
+
+		// Set to failed state briefly to show the animation
+		SetState(UIState.Failed);
+
+		// Wait a moment for the failed animation to be visible
+		await Task.Delay(500);
+
+		// Show alert dialog
+		await DisplayAlert(
+			"Connection Failed",
+			$"Failed to connect to {deviceName}.\n\nThe device might be out of range or already connected to another device.",
+			"OK");
+
+		// Go back to initial state (home screen)
+		SetState(UIState.Initial);
+
+		// Wait a bit before starting scan
+		await Task.Delay(300);
+
+		// Automatically start a new scan to refresh the device list
+		System.Diagnostics.Debug.WriteLine("[MainPage] Starting automatic rescan after connection failure");
+		await StartScanning();
 	}
 
 	private void OnDeviceConnected(object? sender, BluetoothDevice device)
