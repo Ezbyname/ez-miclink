@@ -126,7 +126,7 @@ public class KaraokeEffect : IAudioEffect
 
         // Compression parameters
         float threshold = _params.CompressionThreshold;
-        float ratio = 3f; // Fixed 3:1 ratio for karaoke
+        float ratio = 4f; // Fixed 4:1 ratio for karaoke (industry standard for amateur singers)
 
         for (int i = offset; i < offset + count; i++)
         {
