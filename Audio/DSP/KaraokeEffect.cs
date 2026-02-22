@@ -66,6 +66,9 @@ public class KaraokeEffect : IAudioEffect
     private float _compressorAttackCoef;
     private float _compressorReleaseCoef;
 
+    // High-pass filter (clean up low end before reverb)
+    private BiquadFilter _highPassFilter;
+
     // Presence EQ
     private BiquadFilter _presenceBoost;
 
@@ -97,6 +100,7 @@ public class KaraokeEffect : IAudioEffect
         _params = new KaraokeParameters();
         _combFilters = Array.Empty<CombFilter>();
         _allpassFilters = Array.Empty<AllpassFilter>();
+        _highPassFilter = new BiquadFilter();
         _presenceBoost = new BiquadFilter();
         _rmsEnvelope = 0f;
         _gainEnvelope = 1f;
@@ -107,6 +111,7 @@ public class KaraokeEffect : IAudioEffect
         _sampleRate = sampleRate;
         InitializeReverb();
         UpdateCompressorCoefficients();
+        UpdateHighPassFilter();
         UpdatePresenceEQ();
     }
 
@@ -127,8 +132,12 @@ public class KaraokeEffect : IAudioEffect
         {
             float sample = buffer[i];
 
+            // 0. Apply high-pass filter (clean up low end before reverb)
+            // Industry standard: 80-100 Hz for karaoke/vocal processing
+            float filtered = _highPassFilter.Process(sample);
+
             // 1. Apply presence boost to input (helps voice cut through)
-            float boosted = _presenceBoost.Process(sample);
+            float boosted = _presenceBoost.Process(filtered);
 
             // 2. Light compression for consistent level
             // RMS envelope follower
@@ -199,6 +208,7 @@ public class KaraokeEffect : IAudioEffect
             comb.Reset();
         foreach (var allpass in _allpassFilters)
             allpass.Reset();
+        _highPassFilter.Reset();
         _presenceBoost.Reset();
         _rmsEnvelope = 0f;
         _gainEnvelope = 1f;
@@ -247,6 +257,18 @@ public class KaraokeEffect : IAudioEffect
         // Fast attack (10ms) and moderate release (100ms) for smooth dynamics
         _compressorAttackCoef = DSPHelpers.TimeToCoefficient(10f, _sampleRate);
         _compressorReleaseCoef = DSPHelpers.TimeToCoefficient(100f, _sampleRate);
+    }
+
+    private void UpdateHighPassFilter()
+    {
+        // High-pass filter to remove low-frequency rumble and proximity effect
+        // Industry standard: 80-100 Hz for karaoke/vocal processing
+        _highPassFilter.Design(
+            BiquadFilter.FilterType.HighPass,
+            90f, // 80-100 Hz range
+            _sampleRate,
+            q: 0.707 // Butterworth response
+        );
     }
 
     private void UpdatePresenceEQ()

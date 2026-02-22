@@ -58,6 +58,9 @@ public class HeliumVoiceEffect : IAudioEffect
     // Pitch shifter
     private SimplePitchShifter _pitchShifter;
 
+    // High-pass filter (remove low-frequency artifacts from pitch shift)
+    private BiquadFilter _highPassFilter;
+
     // Formant shifting (simplified via all-pass filters)
     // Note: True formant shifting requires LPC analysis.
     // We use spectral tilt + filtering as approximation.
@@ -94,6 +97,7 @@ public class HeliumVoiceEffect : IAudioEffect
     {
         _params = new HeliumParameters();
         _pitchShifter = new SimplePitchShifter();
+        _highPassFilter = new BiquadFilter();
         _formantShift1 = new BiquadFilter();
         _formantShift2 = new BiquadFilter();
         _brightnessBoost = new BiquadFilter();
@@ -125,8 +129,15 @@ public class HeliumVoiceEffect : IAudioEffect
         // 1. Apply pitch shifting
         _pitchShifter.Process(buffer, offset, count);
 
-        // 2. Apply formant shifting (via spectral warping filters)
-        // High-pass filters simulate formant upshift
+        // 2. Apply high-pass filter (remove unnatural low-frequency artifacts)
+        // Industry standard: 150-200 Hz for chipmunk/helium effect
+        for (int i = offset; i < offset + count; i++)
+        {
+            buffer[i] = _highPassFilter.Process(buffer[i]);
+        }
+
+        // 3. Apply formant shifting (via spectral warping filters)
+        // High-shelf filters simulate formant upshift
         for (int i = offset; i < offset + count; i++)
         {
             buffer[i] = _formantShift1.Process(buffer[i]);
@@ -194,6 +205,7 @@ public class HeliumVoiceEffect : IAudioEffect
     public void Reset()
     {
         _pitchShifter.Reset();
+        _highPassFilter.Reset();
         _formantShift1.Reset();
         _formantShift2.Reset();
         _brightnessBoost.Reset();
@@ -206,7 +218,16 @@ public class HeliumVoiceEffect : IAudioEffect
         // Set pitch shift
         _pitchShifter.SetPitchSemitones(_params.PitchSemitones);
 
-        // Formant shift approximation using high-pass filters
+        // High-pass filter to remove unnatural low frequencies from pitch shift
+        // Industry standard: 150-200 Hz for helium/chipmunk effect
+        _highPassFilter.Design(
+            BiquadFilter.FilterType.HighPass,
+            175f, // 150-200 Hz range
+            _sampleRate,
+            q: 0.707 // Butterworth response
+        );
+
+        // Formant shift approximation using high-shelf filters
         // Shifting formants up = making vocal tract appear smaller
         // We simulate this by emphasizing higher frequencies
         float formantShiftRatio = 1f + (_params.FormantShiftPercent / 100f);

@@ -60,6 +60,9 @@ public class AnimeVoiceEffect : IAudioEffect
     // Pitch shifter
     private SimplePitchShifter _pitchShifter;
 
+    // High-pass filter (remove low-frequency artifacts from pitch shift)
+    private BiquadFilter _highPassFilter;
+
     // Formant shifting (spectral warping)
     private BiquadFilter _formantShift1;
     private BiquadFilter _formantShift2;
@@ -100,6 +103,7 @@ public class AnimeVoiceEffect : IAudioEffect
     {
         _params = new AnimeParameters();
         _pitchShifter = new SimplePitchShifter();
+        _highPassFilter = new BiquadFilter();
         _formantShift1 = new BiquadFilter();
         _formantShift2 = new BiquadFilter();
         _brightnessBoost = new BiquadFilter();
@@ -132,8 +136,15 @@ public class AnimeVoiceEffect : IAudioEffect
         // 1. Apply pitch shifting (+5 semitones for anime tone)
         _pitchShifter.Process(buffer, offset, count);
 
-        // 2. Apply formant shifting (simulate smaller vocal tract)
-        // High-pass filters emphasize upper formants
+        // 2. Apply high-pass filter (remove unnatural low-frequency artifacts)
+        // Industry standard: 120-150 Hz for anime character voice
+        for (int i = offset; i < offset + count; i++)
+        {
+            buffer[i] = _highPassFilter.Process(buffer[i]);
+        }
+
+        // 3. Apply formant shifting (simulate smaller vocal tract)
+        // High-shelf filters emphasize upper formants
         for (int i = offset; i < offset + count; i++)
         {
             buffer[i] = _formantShift1.Process(buffer[i]);
@@ -210,6 +221,7 @@ public class AnimeVoiceEffect : IAudioEffect
     public void Reset()
     {
         _pitchShifter.Reset();
+        _highPassFilter.Reset();
         _formantShift1.Reset();
         _formantShift2.Reset();
         _brightnessBoost.Reset();
@@ -222,6 +234,15 @@ public class AnimeVoiceEffect : IAudioEffect
     {
         // Set pitch shift (+5 semitones for anime character)
         _pitchShifter.SetPitchSemitones(_params.PitchSemitones);
+
+        // High-pass filter to remove unnatural low frequencies from pitch shift
+        // Industry standard: 120-150 Hz for anime character voice
+        _highPassFilter.Design(
+            BiquadFilter.FilterType.HighPass,
+            135f, // 120-150 Hz range
+            _sampleRate,
+            q: 0.707 // Butterworth response
+        );
 
         // Formant shift approximation using high-shelf filters
         // Shifting formants up = making vocal tract appear smaller (anime character)
