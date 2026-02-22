@@ -30,6 +30,7 @@ public partial class EffectsPage : ContentPage
 			StadiumCheck.IsVisible = false;
 			DeepVoiceCheck.IsVisible = false;
 			ChipmunkCheck.IsVisible = false;
+			AnimeVoiceCheck.IsVisible = false;
 
 			// Set the selected checkmark
 			switch (effect)
@@ -60,6 +61,9 @@ public partial class EffectsPage : ContentPage
 					break;
 				case "Chipmunk":
 					ChipmunkCheck.IsVisible = true;
+					break;
+				case "Anime Voice":
+					AnimeVoiceCheck.IsVisible = true;
 					break;
 			}
 

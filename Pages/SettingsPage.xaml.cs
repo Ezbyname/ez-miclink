@@ -183,7 +183,7 @@ public partial class SettingsPage : ContentPage
 	{
 		System.Diagnostics.Debug.WriteLine("[SettingsPage] Voice preset clicked");
 
-		string[] presets = { "Normal", "Deep", "High", "Robot", "Echo", "Chipmunk", "Anime", "Underwater" };
+		string[] presets = { "Normal", "Deep", "High", "Robot", "Echo", "Chipmunk", "Underwater" };
 
 		string? selected = await DisplayActionSheet("Select Voice Preset", "Cancel", null, presets);
 

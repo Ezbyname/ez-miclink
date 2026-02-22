@@ -342,6 +342,39 @@
                                VerticalOptions="Center" />
                     </Grid>
                 </Border>
+
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="20">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="20" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnEffectSelected" CommandParameter="Anime Voice" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="60,*,Auto">
+                        <Label Text="⭐"
+                               FontSize="32"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="5" VerticalOptions="Center">
+                            <Label Text="Anime Voice"
+                                   FontSize="18"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Bright anime character voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="AnimeVoiceCheck"
+                               Text="✓"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
             </VerticalStackLayout>
 
             <!-- Current Effect Display -->
