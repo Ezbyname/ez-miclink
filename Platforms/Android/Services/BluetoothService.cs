@@ -167,9 +167,29 @@ public class BluetoothService : IBluetoothService
 
         try
         {
-            // Note: We only show devices that are actively discovered in this scan
-            // Old paired devices that are not nearby will NOT be shown
-            Log("Step 1: Scanning for devices currently nearby (not showing old paired devices)...");
+            // Step 1: Add bonded (paired) devices first
+            // These are devices that were paired before and may already be connected
+            // (Connected devices often don't respond to discovery broadcasts)
+            Log("Step 1: Adding bonded (paired) devices...");
+            var bondedDevices = _bluetoothAdapter.BondedDevices;
+            if (bondedDevices != null && bondedDevices.Count > 0)
+            {
+                foreach (var device in bondedDevices)
+                {
+                    if (device != null && !string.IsNullOrWhiteSpace(device.Address))
+                    {
+                        var appDevice = new AppBluetoothDevice
+                        {
+                            Name = device.Name ?? "Unknown Device",
+                            Address = device.Address,
+                            IsPaired = true
+                        };
+                        _discoveredDevices.Add(appDevice);
+                        Log($"  → Bonded: {appDevice.Name} ({appDevice.Address})");
+                    }
+                }
+            }
+            Log($"Added {_discoveredDevices.Count} bonded devices");
 
             // Step 2: Cancel any ongoing discovery
             if (_bluetoothAdapter.IsDiscovering)
@@ -180,7 +200,8 @@ public class BluetoothService : IBluetoothService
             }
 
             // Step 3: Register receiver for discovery
-            Log("Step 3: Starting active discovery for nearby devices...");
+            // This will find additional devices that are discoverable but not bonded
+            Log("Step 3: Starting active discovery for additional nearby devices...");
             _discoveryReceiver = new BluetoothDiscoveryReceiver(_discoveredDevices);
 
             var filter = new IntentFilter();
