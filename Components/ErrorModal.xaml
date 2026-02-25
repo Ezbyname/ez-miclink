@@ -1,0 +1,221 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.Components.ErrorModal"
+             x:Name="ErrorModalView"
+             IsVisible="False">
+
+    <!-- Dark Overlay with Blur Effect -->
+    <Grid>
+        <!-- Background Overlay -->
+        <BoxView BackgroundColor="#000000" Opacity="0.8">
+            <BoxView.GestureRecognizers>
+                <TapGestureRecognizer Tapped="OnOverlayTapped" />
+            </BoxView.GestureRecognizers>
+        </BoxView>
+
+        <!-- Centered Modal -->
+        <Border x:Name="ModalContainer"
+                VerticalOptions="Center"
+                HorizontalOptions="Center"
+                Margin="32"
+                WidthRequest="360"
+                Opacity="0"
+                Scale="0.8">
+            <Border.StrokeShape>
+                <RoundRectangle CornerRadius="32" />
+            </Border.StrokeShape>
+
+            <!-- Red/Pink Gradient Border (Thicker) -->
+            <Border.Stroke>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                    <GradientStop Color="#FF4444" Offset="0.0" />
+                    <GradientStop Color="#FF3366" Offset="0.5" />
+                    <GradientStop Color="#6666FF" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Stroke>
+            <Border.StrokeThickness>3</Border.StrokeThickness>
+
+            <!-- Deep Space Starry Background with Stars -->
+            <Border.Background>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                    <GradientStop Color="#1A1F3A" Offset="0.0" />
+                    <GradientStop Color="#0D1123" Offset="0.5" />
+                    <GradientStop Color="#080A1A" Offset="1.0" />
+                </LinearGradientBrush>
+            </Border.Background>
+
+            <!-- Strong Red Glow Shadow -->
+            <Border.Shadow>
+                <Shadow Brush="#FF3366"
+                        Offset="0,0"
+                        Radius="60"
+                        Opacity="0.8" />
+            </Border.Shadow>
+
+            <!-- Starry Overlay Grid -->
+            <Grid>
+                <!-- Stars scattered across background -->
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.6"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="40,30,0,0" />
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.8"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="80,50,0,0" />
+                <Ellipse WidthRequest="1.5" HeightRequest="1.5" Fill="White" Opacity="0.5"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="120,35,0,0" />
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.7"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="200,45,0,0" />
+                <Ellipse WidthRequest="1.5" HeightRequest="1.5" Fill="White" Opacity="0.6"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="280,30,0,0" />
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.4"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="50,280,0,0" />
+                <Ellipse WidthRequest="1.5" HeightRequest="1.5" Fill="White" Opacity="0.7"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="100,300,0,0" />
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.5"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="180,320,0,0" />
+                <Ellipse WidthRequest="1.5" HeightRequest="1.5" Fill="White" Opacity="0.8"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="260,290,0,0" />
+                <Ellipse WidthRequest="2" HeightRequest="2" Fill="White" Opacity="0.6"
+                         HorizontalOptions="Start" VerticalOptions="Start" Margin="320,310,0,0" />
+
+                <VerticalStackLayout Padding="36" Spacing="24">
+
+                    <!-- Error Icon with Glow -->
+                    <Grid Margin="0,12,0,8" HeightRequest="110">
+                        <!-- Large Red Glow Halo -->
+                        <Ellipse WidthRequest="130"
+                                 HeightRequest="130"
+                                 HorizontalOptions="Center"
+                                 VerticalOptions="Center"
+                                 Opacity="0.5">
+                            <Ellipse.Fill>
+                                <RadialGradientBrush>
+                                    <GradientStop Color="#FF3366" Offset="0.0" />
+                                    <GradientStop Color="Transparent" Offset="1.0" />
+                                </RadialGradientBrush>
+                            </Ellipse.Fill>
+                        </Ellipse>
+
+                        <!-- Icon Circle with Exclamation -->
+                        <Border WidthRequest="80"
+                                HeightRequest="80"
+                                HorizontalOptions="Center"
+                                VerticalOptions="Center">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="40" />
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#CC1133" Offset="0.0" />
+                                    <GradientStop Color="#AA0033" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Stroke>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                    <GradientStop Color="#FF4466" Offset="0.0" />
+                                    <GradientStop Color="#FF3355" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Stroke>
+                            <Border.StrokeThickness>4</Border.StrokeThickness>
+                            <Border.Shadow>
+                                <Shadow Brush="#FF3366"
+                                        Offset="0,0"
+                                        Radius="24"
+                                        Opacity="0.8" />
+                            </Border.Shadow>
+
+                            <!-- Exclamation Mark (!) -->
+                            <Label Text="!"
+                                   FontSize="56"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   Margin="0,0,0,4" />
+                        </Border>
+                    </Grid>
+
+                    <!-- Title -->
+                    <Label x:Name="ErrorTitle"
+                           Text="Sign-in Failed"
+                           FontSize="28"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center"
+                           Margin="0,4,0,0" />
+
+                    <!-- Message -->
+                    <Label x:Name="ErrorMessage"
+                           Text="Google sign-in failed.&#x0a;Please try again."
+                           FontSize="15"
+                           TextColor="#9CA3AF"
+                           HorizontalOptions="Center"
+                           HorizontalTextAlignment="Center"
+                           LineBreakMode="WordWrap"
+                           LineHeight="1.4"
+                           Margin="8,0,8,0" />
+
+                    <!-- Action Buttons -->
+                    <Grid ColumnDefinitions="*,*" ColumnSpacing="16" Margin="0,16,0,8">
+
+                        <!-- Try Again Button (Blue Gradient Pill) - LEFT -->
+                        <Border Grid.Column="0"
+                                StrokeThickness="0"
+                                Padding="0,16">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="28" />
+                            </Border.StrokeShape>
+                            <Border.Background>
+                                <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                    <GradientStop Color="#4A90FF" Offset="0.0" />
+                                    <GradientStop Color="#2563EB" Offset="1.0" />
+                                </LinearGradientBrush>
+                            </Border.Background>
+                            <Border.Shadow>
+                                <Shadow Brush="#2563EB"
+                                        Offset="0,4"
+                                        Radius="20"
+                                        Opacity="0.6" />
+                            </Border.Shadow>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnTryAgainClicked" />
+                            </Border.GestureRecognizers>
+                            <Label Text="Try Again"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="White"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                        <!-- Cancel Button (Dark Outlined Pill) - RIGHT -->
+                        <Border Grid.Column="1"
+                                BackgroundColor="Transparent"
+                                StrokeThickness="2"
+                                Padding="0,16">
+                            <Border.StrokeShape>
+                                <RoundRectangle CornerRadius="28" />
+                            </Border.StrokeShape>
+                            <Border.Stroke>
+                                <SolidColorBrush Color="#3A3F5A" />
+                            </Border.Stroke>
+                            <Border.GestureRecognizers>
+                                <TapGestureRecognizer Tapped="OnCancelClicked" />
+                            </Border.GestureRecognizers>
+                            <Label Text="Cancel"
+                                   FontSize="16"
+                                   FontAttributes="Bold"
+                                   TextColor="#7B7F9E"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center" />
+                        </Border>
+
+                    </Grid>
+
+                </VerticalStackLayout>
+
+            </Grid>
+
+        </Border>
+    </Grid>
+
+</ContentView>

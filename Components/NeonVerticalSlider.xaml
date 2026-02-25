@@ -1,0 +1,156 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.Components.NeonVerticalSlider"
+             x:Name="RootControl">
+
+    <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
+        <!-- Value Label -->
+        <Label x:Name="ValueLabel"
+               FontSize="18"
+               FontAttributes="Bold"
+               HorizontalOptions="Center" />
+
+        <!-- Neon Vertical Slider Container (72x180px) -->
+        <Grid WidthRequest="72" HeightRequest="180">
+
+            <!-- LAYER 1: Background Track (14x180px, centered) -->
+            <Border WidthRequest="14"
+                    HeightRequest="180"
+                    BackgroundColor="#00000099"
+                    Stroke="#FFFFFF14"
+                    StrokeThickness="1"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#000000"
+                            Opacity="0.3"
+                            Radius="6"
+                            Offset="0,2" />
+                </Border.Shadow>
+            </Border>
+
+            <!-- LAYER 2: Active Neon Fill (bottom to current value, gradient + glow) -->
+            <Border x:Name="FillBorder"
+                    WidthRequest="14"
+                    HeightRequest="90"
+                    VerticalOptions="End"
+                    HorizontalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow x:Name="FillShadow"
+                            Opacity="0.6"
+                            Radius="12"
+                            Offset="0,0" />
+                </Border.Shadow>
+            </Border>
+
+            <!-- LAYER 3: Tick Marks Layer (Left & Right sides, every 16px) -->
+            <Grid HorizontalOptions="Center" VerticalOptions="Fill">
+                <!-- Left Ticks -->
+                <VerticalStackLayout Spacing="14" Margin="0,8,22,8" HorizontalOptions="Start" VerticalOptions="FillAndExpand">
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
+                </VerticalStackLayout>
+
+                <!-- Right Ticks -->
+                <VerticalStackLayout Spacing="14" Margin="22,8,0,8" HorizontalOptions="End" VerticalOptions="FillAndExpand">
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
+                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
+                </VerticalStackLayout>
+            </Grid>
+
+            <!-- LAYER 4: Numeric Labels Layer (Right side only: +10, 0, -10) -->
+            <VerticalStackLayout Spacing="0"
+                                Margin="0,8,2,8"
+                                HorizontalOptions="End"
+                                VerticalOptions="FillAndExpand">
+                <Label Text="+10" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="Start" />
+                <Label Text="0" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="Center" />
+                <Label Text="-10" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="End" />
+            </VerticalStackLayout>
+
+            <!-- Invisible Slider (functionality only) -->
+            <Slider x:Name="InvisibleSlider"
+                    Minimum="-10"
+                    Maximum="10"
+                    Value="0"
+                    Opacity="0.01"
+                    Rotation="90"
+                    WidthRequest="170"
+                    HorizontalOptions="Center"
+                    ValueChanged="OnSliderValueChanged"
+                    DragStarted="OnSliderDragStarted"
+                    DragCompleted="OnSliderDragCompleted" />
+
+            <!-- LAYER 5: Handle Block (rectangular, floating, dark glass) -->
+            <Border x:Name="HandleBorder"
+                    WidthRequest="56"
+                    HeightRequest="42"
+                    Stroke="#FFFFFF1A"
+                    StrokeThickness="1"
+                    HorizontalOptions="Center"
+                    VerticalOptions="Start"
+                    TranslationY="0">
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+                        <GradientStop Color="#2A2A3A" Offset="0.0" />
+                        <GradientStop Color="#1B1B2A" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#000000"
+                            Opacity="0.6"
+                            Radius="8"
+                            Offset="0,2" />
+                </Border.Shadow>
+                <!-- Inner Highlight Line with Glow -->
+                <Border x:Name="InnerHighlight"
+                        WidthRequest="24"
+                        HeightRequest="4"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Center">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="2" />
+                    </Border.StrokeShape>
+                    <Border.Shadow>
+                        <Shadow x:Name="HighlightShadow"
+                                Opacity="0.8"
+                                Radius="6"
+                                Offset="0,0" />
+                    </Border.Shadow>
+                </Border>
+            </Border>
+        </Grid>
+
+        <!-- Parameter Name -->
+        <Label x:Name="ParameterLabel"
+               FontSize="12"
+               TextColor="#FFFFFF90"
+               HorizontalOptions="Center"
+               Margin="0,4,0,0" />
+    </VerticalStackLayout>
+
+</ContentView>

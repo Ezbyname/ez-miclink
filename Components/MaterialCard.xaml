@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Border xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+        x:Class="BluetoothMicrophoneApp.Components.MaterialCard"
+        x:Name="CardRoot"
+        BackgroundColor="#0A0A1208"
+        Stroke="#8B5CF630"
+        StrokeThickness="1">
+
+    <Border.StrokeShape>
+        <RoundRectangle CornerRadius="20" />
+    </Border.StrokeShape>
+
+    <!-- Elevation Level 1 Shadow -->
+    <Border.Shadow>
+        <Shadow Brush="#8B5CF620"
+                Opacity="0.2"
+                Radius="8"
+                Offset="0,2" />
+    </Border.Shadow>
+
+    <!-- Content slot -->
+    <ContentPresenter />
+
+</Border>

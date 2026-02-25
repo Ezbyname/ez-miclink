@@ -2,9 +2,14 @@ using Android.Media;
 using BluetoothMicrophoneApp.Services;
 using BluetoothMicrophoneApp.Audio.DSP;
 using Android.Content;
+using System.Buffers;
 
 namespace BluetoothMicrophoneApp.Platforms.Android.Services;
 
+/// <summary>
+/// Android audio service with proper resource management and async patterns.
+/// Implements IDisposable for cleanup of unmanaged audio resources.
+/// </summary>
 public class AudioService : IAudioService
 {
     private AudioManager? _audioManager;
@@ -14,9 +19,11 @@ public class AudioService : IAudioService
     private Thread? _audioThread;
     private bool _shouldStop;
     private AudioEngine _audioEngine;
-    private float[] _floatBuffer;
-    private readonly object _engineLock = new object();
+    private float[]? _floatBuffer;
+    private byte[]? _pcmBuffer;
+    private bool _buffersFromPool = false;
     private ScoConnectionReceiver? _scoReceiver;
+    private bool _disposed = false;
 
     public bool IsRouting => _isRouting;
 
@@ -33,8 +40,10 @@ public class AudioService : IAudioService
         _floatBuffer = Array.Empty<float>();
     }
 
-    public async Task<bool> StartAudioRoutingAsync()
+    public async Task<bool> StartAudioRoutingAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+
         try
         {
             if (_isRouting)
@@ -72,7 +81,7 @@ public class AudioService : IAudioService
 
                 // Wait for SCO connection (up to 3 seconds)
                 System.Diagnostics.Debug.WriteLine("[AudioService] Waiting for Bluetooth SCO connection...");
-                bool scoConnected = await _scoReceiver.WaitForConnectionAsync(3000);
+                bool scoConnected = await _scoReceiver.WaitForConnectionAsync(3000).ConfigureAwait(false);
 
                 if (!scoConnected)
                 {
@@ -135,9 +144,21 @@ public class AudioService : IAudioService
             _audioEngine.Initialize(sampleRate);
             _audioEngine.SetPreset("clean"); // Start with clean preset
 
-            // Allocate float buffer for DSP processing
+            // Load noise reduction setting (default: enabled)
+            bool noiseReductionEnabled = Microsoft.Maui.Storage.Preferences.Get("noise_reduction", true);
+            _audioEngine.SetNoiseReduction(noiseReductionEnabled);
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Noise reduction initialized: {(noiseReductionEnabled ? "ON" : "OFF")}");
+
+            // Rent buffers from ArrayPool (reduces GC pressure, reuses memory)
             int floatBufferSize = minBufferSize / 2; // PCM16 = 2 bytes per sample
-            _floatBuffer = new float[floatBufferSize];
+            int maxBufferSize = floatBufferSize * 4; // 4x safety margin
+
+            _floatBuffer = ArrayPool<float>.Shared.Rent(maxBufferSize);
+            _pcmBuffer = ArrayPool<byte>.Shared.Rent(maxBufferSize * 2);
+            _buffersFromPool = true;
+
+            System.Diagnostics.Debug.WriteLine($"[AudioService] ✓ Buffers rented from ArrayPool: {maxBufferSize} samples ({maxBufferSize * 2} bytes)");
+            System.Diagnostics.Debug.WriteLine($"[AudioService]   - Reduces GC pressure, reuses memory from pool");
 
             _audioRecord.StartRecording();
             _audioTrack.Play();
@@ -151,13 +172,27 @@ public class AudioService : IAudioService
             System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Audio routing loop starting...");
             System.Diagnostics.Debug.WriteLine("[AudioService] ");
 
-            // Start audio routing thread
-            _audioThread = new Thread(AudioRoutingLoop);
+            // Start audio routing thread with REAL-TIME PRIORITY
+            _audioThread = new Thread(AudioRoutingLoop)
+            {
+                Name = "AudioEngine-RT",
+                Priority = ThreadPriority.Highest, // Real-time priority
+                IsBackground = false // Keep app alive for audio
+            };
             _audioThread.Start();
+
+            // Set Android native thread priority to URGENT_AUDIO
+            SetThreadPriorityAndroid();
 
             StatusChanged?.Invoke(this, "Routing: Phone Mic → Bluetooth Speaker");
 
-            return await Task.FromResult(true);
+            return true; // ✅ No fake async wrapper
+        }
+        catch (OperationCanceledException)
+        {
+            System.Diagnostics.Debug.WriteLine("[AudioService] Audio routing startup cancelled");
+            await StopAudioRoutingAsync(CancellationToken.None).ConfigureAwait(false);
+            throw; // Re-throw to let caller handle
         }
         catch (Exception ex)
         {
@@ -166,62 +201,98 @@ public class AudioService : IAudioService
         }
     }
 
-    public async Task StopAudioRoutingAsync()
+    public async Task StopAudioRoutingAsync(CancellationToken cancellationToken = default)
     {
+        ThrowIfDisposed();
+
         _shouldStop = true;
         _isRouting = false;
 
-        _audioThread?.Join(1000);
-
-        _audioRecord?.Stop();
-        _audioRecord?.Release();
-        _audioRecord = null;
-
-        _audioTrack?.Stop();
-        _audioTrack?.Release();
-        _audioTrack = null;
-
-        // Unregister SCO receiver
-        if (_scoReceiver != null)
+        // Wait for audio thread to exit asynchronously (non-blocking)
+        if (_audioThread != null)
         {
-            try
+            await Task.Run(() => _audioThread.Join(2000), cancellationToken).ConfigureAwait(false);
+        }
+
+        // Cleanup resources (exception-safe)
+        try
+        {
+            DisposeAudioRecord();
+            DisposeAudioTrack();
+            DisposeScoReceiver();
+
+            if (_audioManager != null)
             {
-                Platform.CurrentActivity?.UnregisterReceiver(_scoReceiver);
+                _audioManager.StopBluetoothSco();
+                _audioManager.Mode = Mode.Normal;
             }
-            catch { }
-            _scoReceiver = null;
-        }
 
-        if (_audioManager != null)
+            // Stop foreground service
+            var context = Platform.CurrentActivity;
+            if (context != null)
+            {
+                var serviceIntent = new Intent(context, typeof(AudioForegroundService));
+                context.StopService(serviceIntent);
+                System.Diagnostics.Debug.WriteLine("[AudioService] Foreground service stopped");
+            }
+        }
+        finally
         {
-            _audioManager.StopBluetoothSco();
-            _audioManager.Mode = Mode.Normal;
+            StatusChanged?.Invoke(this, "Audio routing stopped");
         }
-
-        // Stop foreground service
-        var context = Platform.CurrentActivity;
-        if (context != null)
-        {
-            var serviceIntent = new Intent(context, typeof(AudioForegroundService));
-            context.StopService(serviceIntent);
-            System.Diagnostics.Debug.WriteLine("[AudioService] Foreground service stopped");
-        }
-
-        StatusChanged?.Invoke(this, "Audio routing stopped");
-
-        await Task.CompletedTask;
     }
 
     public void SetVolume(double volume)
     {
+        ThrowIfDisposed();
+
         // Apply volume as digital gain in DSP engine
         // This works for Bluetooth audio (AudioTrack.SetVolume doesn't affect Bluetooth SCO)
         try
         {
             System.Diagnostics.Debug.WriteLine($"[AudioService] Setting volume to {volume * 100}%");
-            lock (_engineLock)
+
+            // Set digital gain in audio engine (LOCK-FREE via volatile field)
+            _audioEngine.SetVolume(volume);
+
+            // ALSO set Android system volume for VoiceCall stream to MAXIMUM
+            // This ensures hardware output is at full volume, and we control via digital gain
+            if (_audioManager != null)
             {
-                _audioEngine.SetVolume(volume);
+                try
+                {
+                    // Get max volume for voice call stream
+                    int maxVolume = _audioManager.GetStreamMaxVolume(global::Android.Media.Stream.VoiceCall);
+
+                    // Set system volume to maximum when volume > 0, to ensure strong output
+                    // We control actual volume via digital gain in the audio engine
+                    int systemVolume = volume > 0.05 ? maxVolume : 0;
+
+                    // Set the system volume (without showing UI to avoid spam)
+                    _audioManager.SetStreamVolume(global::Android.Media.Stream.VoiceCall, systemVolume, VolumeNotificationFlags.RemoveSoundAndVibrate);
+
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] System volume set to {systemVolume}/{maxVolume} (MAX)");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] Failed to set system volume: {ex.Message}");
+                }
+            }
+
+            // Also set AudioTrack volume to maximum (digital gain controls actual volume)
+            if (_audioTrack != null)
+            {
+                try
+                {
+                    // Set AudioTrack to max volume, actual volume controlled by digital gain
+                    float trackVolume = volume > 0.05 ? 1.0f : 0.0f;
+                    _audioTrack.SetVolume(trackVolume);
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] AudioTrack volume set to {trackVolume} (MAX)");
+                }
+                catch (Exception ex)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] Failed to set AudioTrack volume: {ex.Message}");
+                }
             }
         }
         catch (Exception ex)
@@ -232,15 +303,14 @@ public class AudioService : IAudioService
 
     public void SetEffect(string effectName)
     {
+        ThrowIfDisposed();
+
         try
         {
             System.Diagnostics.Debug.WriteLine($"[AudioService] Changing effect to: {effectName}");
 
-            // Thread-safe effect switching
-            lock (_engineLock)
-            {
-                _audioEngine.SetPreset(effectName);
-            }
+            // Lock-free effect switching (AudioEngine handles thread safety internally)
+            _audioEngine.SetPreset(effectName);
 
             StatusChanged?.Invoke(this, $"Effect changed to: {effectName}");
             System.Diagnostics.Debug.WriteLine($"[AudioService] Effect changed successfully to: {effectName}");
@@ -252,59 +322,121 @@ public class AudioService : IAudioService
         }
     }
 
+    public void SetNoiseReduction(bool enabled)
+    {
+        ThrowIfDisposed();
+
+        try
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Setting noise reduction: {(enabled ? "ON" : "OFF")}");
+
+            // Lock-free noise reduction toggle (uses volatile field)
+            _audioEngine.SetNoiseReduction(enabled);
+
+            StatusChanged?.Invoke(this, $"Noise reduction: {(enabled ? "ON" : "OFF")}");
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Noise reduction set successfully to: {(enabled ? "ON" : "OFF")}");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] SetNoiseReduction error: {ex.Message}");
+            StatusChanged?.Invoke(this, $"Error setting noise reduction: {ex.Message}");
+        }
+    }
+
     public string GetCurrentEffect()
     {
+        ThrowIfDisposed();
         return _audioEngine.GetCurrentPreset();
     }
 
     public string[] GetAvailableEffects()
     {
+        ThrowIfDisposed();
+
         return new[]
         {
+            // Free effects
             "clean", "podcast", "stage_mc", "karaoke", "announcer",
-            "robot", "megaphone", "stadium", "deep_voice", "chipmunk"
+            "robot", "megaphone", "stadium", "deep_voice", "chipmunk",
+            // Premium character voices
+            "nerdy", "squeaky_cartoon", "dopey_giant", "squawky_bird",
+            "dopey_dad", "mouse_squeak", "villain", "grumpy"
         };
     }
 
+    /// <summary>
+    /// Real-time audio processing loop.
+    /// CRITICAL: Zero allocations, zero locks, real-time priority.
+    /// </summary>
     private void AudioRoutingLoop()
     {
-        var buffer = new byte[1024];
+        System.Diagnostics.Debug.WriteLine("[AudioEngine-RT] Audio thread started with HIGHEST priority");
 
         while (!_shouldStop && _audioRecord != null && _audioTrack != null)
         {
             try
             {
-                int bytesRead = _audioRecord.Read(buffer, 0, buffer.Length);
+                // Read audio from microphone (uses pre-allocated buffer)
+                int bytesRead = _audioRecord.Read(_pcmBuffer, 0, _pcmBuffer.Length);
 
                 if (bytesRead > 0)
                 {
                     // Convert PCM16 (byte[]) to float32 (float[])
                     int sampleCount = bytesRead / 2; // 2 bytes per PCM16 sample
-                    if (_floatBuffer.Length < sampleCount)
+
+                    // Safety check: Ensure we don't exceed buffer size
+                    if (sampleCount > _floatBuffer.Length)
                     {
-                        _floatBuffer = new float[sampleCount];
+                        System.Diagnostics.Debug.WriteLine($"[AudioEngine-RT] WARNING: Sample count ({sampleCount}) exceeds buffer size ({_floatBuffer.Length}), clamping");
+                        sampleCount = _floatBuffer.Length;
                     }
 
-                    ConvertPCM16ToFloat(buffer, _floatBuffer, sampleCount);
+                    // Convert PCM16 to float (no allocation)
+                    ConvertPCM16ToFloat(_pcmBuffer, _floatBuffer, sampleCount);
 
-                    // Process through DSP engine (thread-safe)
-                    lock (_engineLock)
-                    {
-                        _audioEngine.ProcessBuffer(_floatBuffer, 0, sampleCount);
-                    }
+                    // Process through DSP engine (LOCK-FREE!)
+                    _audioEngine.ProcessBuffer(_floatBuffer, 0, sampleCount);
 
-                    // Convert float32 back to PCM16
-                    ConvertFloatToPCM16(_floatBuffer, buffer, sampleCount);
+                    // Convert float back to PCM16 (no allocation)
+                    ConvertFloatToPCM16(_floatBuffer, _pcmBuffer, sampleCount);
 
                     // Write processed audio to output
-                    _audioTrack.Write(buffer, 0, bytesRead);
+                    _audioTrack.Write(_pcmBuffer, 0, bytesRead);
                 }
             }
             catch (Exception ex)
             {
-                System.Diagnostics.Debug.WriteLine($"Audio routing error: {ex.Message}");
+                System.Diagnostics.Debug.WriteLine($"[AudioEngine-RT] Audio routing error: {ex.Message}");
                 break;
             }
+        }
+
+        System.Diagnostics.Debug.WriteLine("[AudioEngine-RT] Audio thread stopped");
+    }
+
+    /// <summary>
+    /// Set Android native thread priority to URGENT_AUDIO for real-time performance.
+    /// Must be called AFTER thread starts.
+    /// </summary>
+    private void SetThreadPriorityAndroid()
+    {
+        try
+        {
+            // Wait a moment for thread to fully start
+            Thread.Sleep(10);
+
+            // Set Android native thread priority to URGENT_AUDIO
+            // This is the highest priority for audio processing threads
+            var threadId = global::Android.OS.Process.MyTid();
+            global::Android.OS.Process.SetThreadPriority(threadId,
+                global::Android.OS.ThreadPriority.UrgentAudio);
+
+            System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Thread priority set to URGENT_AUDIO (highest real-time priority)");
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] ⚠ Warning: Could not set URGENT_AUDIO priority: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[AudioService]   Audio will use ThreadPriority.Highest instead");
         }
     }
 
@@ -339,6 +471,184 @@ public class AudioService : IAudioService
             pcm16Buffer[i * 2 + 1] = (byte)((sample >> 8) & 0xFF);
         }
     }
+
+    #region IDisposable Implementation
+
+    /// <summary>
+    /// Check if object has been disposed and throw if it has.
+    /// </summary>
+    private void ThrowIfDisposed()
+    {
+        if (_disposed)
+            throw new ObjectDisposedException(nameof(AudioService));
+    }
+
+    /// <summary>
+    /// Public Dispose method - called by consumers to clean up resources.
+    /// </summary>
+    public void Dispose()
+    {
+        Dispose(disposing: true);
+        GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Protected dispose pattern implementation.
+    /// </summary>
+    protected virtual void Dispose(bool disposing)
+    {
+        if (_disposed)
+            return;
+
+        System.Diagnostics.Debug.WriteLine("[AudioService] Disposing resources...");
+
+        if (disposing)
+        {
+            try
+            {
+                // Stop audio routing first
+                _shouldStop = true;
+                _isRouting = false;
+
+                // Wait for audio thread to exit (with timeout)
+                _audioThread?.Join(2000);
+
+                // Dispose all resources
+                DisposeAudioRecord();
+                DisposeAudioTrack();
+                DisposeScoReceiver();
+                DisposeBuffers();
+
+                // Restore audio mode
+                if (_audioManager != null)
+                {
+                    try
+                    {
+                        _audioManager.StopBluetoothSco();
+                        _audioManager.Mode = Mode.Normal;
+                    }
+                    catch (Exception ex)
+                    {
+                        System.Diagnostics.Debug.WriteLine($"[AudioService] Error restoring audio mode: {ex.Message}");
+                    }
+                }
+
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Resources disposed successfully");
+            }
+            catch (Exception ex)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioService] Error during disposal: {ex.Message}");
+            }
+        }
+
+        _disposed = true;
+    }
+
+    /// <summary>
+    /// Dispose AudioRecord safely.
+    /// </summary>
+    private void DisposeAudioRecord()
+    {
+        try
+        {
+            if (_audioRecord != null)
+            {
+                _audioRecord.Stop();
+                _audioRecord.Release();
+                _audioRecord.Dispose();
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AudioRecord disposed");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error disposing AudioRecord: {ex.Message}");
+        }
+        finally
+        {
+            _audioRecord = null;
+        }
+    }
+
+    /// <summary>
+    /// Dispose AudioTrack safely.
+    /// </summary>
+    private void DisposeAudioTrack()
+    {
+        try
+        {
+            if (_audioTrack != null)
+            {
+                _audioTrack.Stop();
+                _audioTrack.Release();
+                _audioTrack.Dispose();
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AudioTrack disposed");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error disposing AudioTrack: {ex.Message}");
+        }
+        finally
+        {
+            _audioTrack = null;
+        }
+    }
+
+    /// <summary>
+    /// Unregister SCO receiver safely.
+    /// </summary>
+    private void DisposeScoReceiver()
+    {
+        try
+        {
+            if (_scoReceiver != null)
+            {
+                Platform.CurrentActivity?.UnregisterReceiver(_scoReceiver);
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ SCO receiver unregistered");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error unregistering SCO receiver: {ex.Message}");
+        }
+        finally
+        {
+            _scoReceiver = null;
+        }
+    }
+
+    /// <summary>
+    /// Return buffers to ArrayPool.
+    /// </summary>
+    private void DisposeBuffers()
+    {
+        try
+        {
+            if (_buffersFromPool)
+            {
+                if (_floatBuffer != null)
+                {
+                    ArrayPool<float>.Shared.Return(_floatBuffer, clearArray: true);
+                    _floatBuffer = null;
+                }
+
+                if (_pcmBuffer != null)
+                {
+                    ArrayPool<byte>.Shared.Return(_pcmBuffer, clearArray: true);
+                    _pcmBuffer = null;
+                }
+
+                _buffersFromPool = false;
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Buffers returned to ArrayPool");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error disposing buffers: {ex.Message}");
+        }
+    }
+
+    #endregion
 
     /// <summary>
     /// BroadcastReceiver to detect when Bluetooth SCO audio connection is established.

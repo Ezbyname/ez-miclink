@@ -9,9 +9,6 @@ public static class MauiProgram
 	{
 		var builder = MauiApp.CreateBuilder();
 
-		// Register App for DI
-		builder.Services.AddSingleton<App>();
-
 		builder
 			.UseMauiApp<App>()
 			.ConfigureFonts(fonts =>
@@ -27,19 +24,21 @@ public static class MauiProgram
 		// Register services
 #if ANDROID
 		builder.Services.AddSingleton<IBluetoothService, Platforms.Android.Services.BluetoothService>();
+
+		// AudioService is Singleton (not Transient) because:
+		// 1. Audio hardware state must be shared across all pages
+		// 2. Start/Stop methods manage resource allocation during use
+		// 3. IDisposable.Dispose() handles final cleanup at app shutdown
 		builder.Services.AddSingleton<IAudioService, Platforms.Android.Services.AudioService>();
+
 		builder.Services.AddSingleton<IConnectivityDiagnostics, Platforms.Android.Services.ConnectivityDiagnostics>();
 #elif IOS
 		builder.Services.AddSingleton<IBluetoothService, Platforms.iOS.Services.BluetoothService>();
 		builder.Services.AddSingleton<IAudioService, Platforms.iOS.Services.AudioService>();
 #endif
 
-		// Register authentication service (platform-independent)
-		builder.Services.AddSingleton<IAuthService, AuthService>();
-
 		// Register pages
 		builder.Services.AddSingleton<MainPage>();
-		builder.Services.AddTransient<Pages.LoginPage>();
 		builder.Services.AddTransient<Pages.SettingsPage>();
 
 		return builder.Build();

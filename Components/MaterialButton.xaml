@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Border xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+        x:Class="BluetoothMicrophoneApp.Components.MaterialButton"
+        x:Name="ButtonRoot"
+        MinimumHeightRequest="48"
+        MinimumWidthRequest="48"
+        BackgroundColor="#8B5CF6"
+        Stroke="Transparent"
+        StrokeThickness="0"
+        Padding="24,12"
+        HorizontalOptions="Center">
+
+    <Border.StrokeShape>
+        <RoundRectangle CornerRadius="12" />
+    </Border.StrokeShape>
+
+    <!-- Material Design semanticContentAttribute for accessibility -->
+    <Label x:Name="ButtonLabel"
+           Text="Button"
+           FontSize="15"
+           FontAttributes="Bold"
+           TextColor="White"
+           HorizontalOptions="Center"
+           VerticalOptions="Center"
+           AutomationProperties.IsInAccessibleTree="True" />
+
+</Border>

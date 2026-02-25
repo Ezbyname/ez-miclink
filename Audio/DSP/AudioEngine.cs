@@ -1,4 +1,5 @@
 using System;
+using BluetoothMicrophoneApp.Audio.Presets;
 
 namespace BluetoothMicrophoneApp.Audio.DSP;
 
@@ -47,8 +48,16 @@ public class AudioEngine
     // Current preset
     private string _currentPreset;
 
+    // Preset registry (ARCHITECTURE PATTERN: Registry + Strategy)
+    private PresetRegistry _presetRegistry;
+
     // Master gain control (always present, controlled by volume slider)
     private GainEffect _masterGain;
+    private volatile float _masterGainValue = 1.0f; // LOCK-FREE: Atomic read/write
+
+    // Noise reduction (global effect, always present but can be bypassed)
+    private NoiseReductionEffect _noiseReduction;
+    private volatile bool _noiseReductionEnabled; // LOCK-FREE: Atomic read/write
 
     public AudioEngine()
     {
@@ -56,6 +65,36 @@ public class AudioEngine
         _currentPreset = "None";
         _isInitialized = false;
         _masterGain = new GainEffect();
+        _noiseReduction = new NoiseReductionEffect();
+        _noiseReductionEnabled = true; // Enabled by default
+
+        // Initialize preset registry with refactored presets
+        _presetRegistry = new PresetRegistry();
+        RegisterPresets();
+    }
+
+    /// <summary>
+    /// Register all audio presets.
+    /// ARCHITECTURE: Demonstrates Open/Closed Principle.
+    /// New presets can be added without modifying AudioEngine.
+    /// </summary>
+    private void RegisterPresets()
+    {
+        // Register refactored presets (following new architecture)
+        _presetRegistry.Register(new CleanPreset());
+        _presetRegistry.Register(new PodcastPreset());
+        _presetRegistry.Register(new RobotPreset());
+        _presetRegistry.Register(new MegaphonePreset());
+        _presetRegistry.Register(new DeepVoicePreset());
+        _presetRegistry.Register(new ChipmunkPreset());
+
+        // TODO: Extract remaining presets into separate classes:
+        // - StageMCPreset
+        // - KaraokePreset
+        // - AnnouncerPreset
+        // - StadiumPreset
+        // - AnimeVoicePreset
+        // - Character voice presets (nerdy, squeaky, dopey, etc.)
     }
 
     /// <summary>
@@ -71,6 +110,7 @@ public class AudioEngine
         _totalSamplesProcessed = 0;
         _processingStartTime = DateTime.Now;
         _masterGain.Prepare(sampleRate);
+        _noiseReduction.Prepare(sampleRate);
         _isInitialized = true;
     }
 
@@ -93,23 +133,29 @@ public class AudioEngine
         if (!_isInitialized)
             return;
 
-        // Safety clamp (shouldn't be needed if input is correct, but protects against bad data)
-        // Note: This loop is fast (no branching in CPU pipeline)
+        // Apply input gain boost FIRST to amplify weak microphone signals
+        // This compensates for weak Bluetooth microphone input
+        const float INPUT_GAIN = 1.5f; // 50% boost to input signal
         for (int i = offset; i < offset + count; i++)
         {
-            buffer[i] = Math.Clamp(buffer[i], -1f, 1f);
+            buffer[i] = Math.Clamp(buffer[i] * INPUT_GAIN, -1f, 1f);
+        }
+
+        // Apply noise reduction SECOND (after input gain, before effects)
+        // This removes background noise before it gets amplified by effects
+        if (_noiseReductionEnabled)
+        {
+            _noiseReduction.Process(buffer, offset, count);
         }
 
         // Process through effect chain
         _effectChain.Process(buffer, offset, count);
 
-        // Apply master gain (user volume control)
-        _masterGain.Process(buffer, offset, count);
-
-        // Final safety clipping (hard limit at ±0.98 to prevent inter-sample peaks)
+        // Apply master gain (LOCK-FREE via volatile field read)
+        float masterGain = _masterGainValue; // Read volatile (atomic)
         for (int i = offset; i < offset + count; i++)
         {
-            buffer[i] = Math.Clamp(buffer[i], -0.98f, 0.98f);
+            buffer[i] = Math.Clamp(buffer[i] * masterGain, -1.0f, 1.0f);
         }
 
         // Update statistics (low overhead)
@@ -118,13 +164,18 @@ public class AudioEngine
         // Debug logging (only log once per second to avoid spam)
         if (_totalSamplesProcessed % _sampleRate == 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Processing: preset={_currentPreset}, effects={_effectChain.Count}");
+            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Processing: preset={_currentPreset}, effects={_effectChain.Count}, noiseReduction={_noiseReductionEnabled}");
         }
     }
 
     /// <summary>
     /// Load an effect preset by name.
     /// This configures the effect chain for a specific use case.
+    ///
+    /// ARCHITECTURE: Hybrid approach (Registry + Legacy Switch)
+    /// - Try registry first (new architecture, Open/Closed Principle)
+    /// - Fall back to switch statement for presets not yet extracted
+    /// - Allows incremental refactoring without breaking existing functionality
     /// </summary>
     public void SetPreset(string presetName)
     {
@@ -135,6 +186,21 @@ public class AudioEngine
 
         // Clear existing chain
         _effectChain.Clear();
+
+        // TRY REGISTRY FIRST (NEW ARCHITECTURE)
+        // If preset is registered, use it (Open/Closed Principle)
+        if (_presetRegistry.Contains(presetName))
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioEngine] ✅ Using registry preset: {presetName}");
+            _presetRegistry.ApplyPreset(presetName, _effectChain, _sampleRate);
+            _currentPreset = presetName;
+            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Preset loaded successfully: {_currentPreset}");
+            return; // DONE - preset applied from registry
+        }
+
+        // FALLBACK TO LEGACY SWITCH STATEMENT
+        // For presets not yet extracted to separate classes
+        System.Diagnostics.Debug.WriteLine($"[AudioEngine] ⚠️ Using legacy switch for: {presetName}");
 
         // Build new chain based on preset
         switch (presetName.ToLower())
@@ -179,7 +245,49 @@ public class AudioEngine
                 break;
 
             case "anime":
+            case "anime_voice":
                 BuildAnimeVoicePreset();
+                break;
+
+            case "nerdy":
+            case "nerdy_voice":
+                BuildNerdyVoicePreset();
+                break;
+
+            case "squeaky_cartoon":
+            case "squeaky":
+                BuildSqueakyCartoonPreset();
+                break;
+
+            case "dopey_giant":
+            case "dopey giant":
+                BuildDopeyGiantPreset();
+                break;
+
+            case "squawky_bird":
+            case "squawky bird":
+            case "duck":
+                BuildSquawkyBirdPreset();
+                break;
+
+            case "dopey_dad":
+            case "dopey dad":
+                BuildDopeyDadPreset();
+                break;
+
+            case "mouse_squeak":
+            case "mouse":
+                BuildMouseSqueakPreset();
+                break;
+
+            case "villain":
+            case "accented_villain":
+                BuildAccentedVillainPreset();
+                break;
+
+            case "grumpy_cat":
+            case "grumpy":
+                BuildGrumpyCatPreset();
                 break;
 
             case "clean":
@@ -210,6 +318,7 @@ public class AudioEngine
     public void Reset()
     {
         _effectChain.Reset();
+        _noiseReduction.Reset();
         _totalSamplesProcessed = 0;
     }
 
@@ -231,12 +340,39 @@ public class AudioEngine
     /// This controls the final output volume regardless of preset.
     /// </summary>
     /// <param name="volume">Volume level (0.5 = 50%, 1.0 = 100%, 2.0 = 200%)</param>
+    /// <summary>
+    /// Set master volume (lock-free via volatile field).
+    /// Called from UI thread, read by audio thread.
+    /// </summary>
     public void SetVolume(double volume)
     {
-        float gain = (float)Math.Clamp(volume, 0.0, 2.0);
-        _masterGain.SetGain(gain);
-        System.Diagnostics.Debug.WriteLine($"[AudioEngine] Volume set to {volume * 100}% (gain={gain})");
+        // Write to volatile field (atomic, lock-free)
+        _masterGainValue = (float)Math.Clamp(volume, 0.0, 2.0);
+        System.Diagnostics.Debug.WriteLine($"[AudioEngine] Volume set to {volume * 100}% (gain={_masterGainValue}) [LOCK-FREE]");
     }
+
+    /// <summary>
+    /// Enable or disable background noise reduction.
+    /// Noise reduction removes constant background noise (AC hum, fan noise, etc.)
+    /// while preserving speech and music content.
+    /// </summary>
+    /// <param name="enabled">True to enable noise reduction, false to disable</param>
+    public void SetNoiseReduction(bool enabled)
+    {
+        _noiseReductionEnabled = enabled;
+        System.Diagnostics.Debug.WriteLine($"[AudioEngine] Noise reduction {(enabled ? "ENABLED" : "DISABLED")}");
+
+        // Reset noise reduction state when toggling
+        if (!enabled)
+        {
+            _noiseReduction.Reset();
+        }
+    }
+
+    /// <summary>
+    /// Get current noise reduction state.
+    /// </summary>
+    public bool IsNoiseReductionEnabled() => _noiseReductionEnabled;
 
     /// <summary>
     /// Get processing statistics.
@@ -805,6 +941,200 @@ public class AudioEngine
         _effectChain.AddEffect(eq);
 
         // 3. Limiter - Safety only
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    // ============================================================================
+    // PREMIUM CHARACTER VOICE PRESETS
+    // ============================================================================
+
+    private void BuildNerdyVoicePreset()
+    {
+        var nerdy = new NerdyVoiceEffect();
+        nerdy.SetParameters(new NerdyVoiceEffect.NerdyParameters
+        {
+            PitchSemitones = 7f,
+            FormantShiftPercent = 18f,
+            NasalBoostDb = 5f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(nerdy);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildSqueakyCartoonPreset()
+    {
+        var squeaky = new SqueakyCartoonEffect();
+        squeaky.SetParameters(new SqueakyCartoonEffect.SqueakyParameters
+        {
+            PitchSemitones = 9f,
+            FormantShiftPercent = 22f,
+            BrightnessDb = 6f,
+            AirDb = 4f,
+            Distortion = 0.15f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(squeaky);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildDopeyGiantPreset()
+    {
+        var dopeyGiant = new DopeyGiantEffect();
+        dopeyGiant.SetParameters(new DopeyGiantEffect.DopeyGiantParameters
+        {
+            PitchSemitones = -6f,
+            FormantShiftPercent = -12f,
+            BassBoostDb = 6f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(dopeyGiant);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildSquawkyBirdPreset()
+    {
+        var squawky = new SquawkyBirdEffect();
+        squawky.SetParameters(new SquawkyBirdEffect.SquawkyBirdParameters
+        {
+            PitchSemitones = 4f,
+            FormantShiftPercent = 25f,
+            RingModIntensity = 0.4f,
+            Distortion = 0.5f,
+            VibratoDepth = 2f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(squawky);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildDopeyDadPreset()
+    {
+        var dopeyDad = new DopeyDadEffect();
+        dopeyDad.SetParameters(new DopeyDadEffect.DopeyDadParameters
+        {
+            PitchSemitones = -2f,
+            FormantShiftPercent = -6f,
+            ThicknessDb = 4f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(dopeyDad);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildMouseSqueakPreset()
+    {
+        var mouse = new MouseSqueakEffect();
+        mouse.SetParameters(new MouseSqueakEffect.MouseParameters
+        {
+            PitchSemitones = 11f,
+            FormantShiftPercent = 30f,
+            BrightnessDb = 8f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(mouse);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildAccentedVillainPreset()
+    {
+        var villain = new AccentedVillainEffect();
+        villain.SetParameters(new AccentedVillainEffect.VillainParameters
+        {
+            PitchSemitones = -3.5f,
+            FormantShiftPercent = -10f,
+            GravelAmount = 0.2f,
+            BassBoostDb = 4f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(villain);
+
+        var limiter = new LimiterEffect();
+        limiter.SetParameters(new LimiterEffect.LimiterParameters
+        {
+            CeilingDb = -0.5f,
+            AttackMs = 0.5f,
+            ReleaseMs = 100f,
+            LookaheadMs = 3f
+        });
+        _effectChain.AddEffect(limiter);
+    }
+
+    private void BuildGrumpyCatPreset()
+    {
+        var grumpy = new GrumpyCatEffect();
+        grumpy.SetParameters(new GrumpyCatEffect.GrumpyParameters
+        {
+            PitchSemitones = -4f,
+            FormantShiftPercent = -10f,
+            GravelAmount = 0.3f,
+            BassEmphasisDb = 5f,
+            Intensity = 1.0f
+        });
+        _effectChain.AddEffect(grumpy);
+
         var limiter = new LimiterEffect();
         limiter.SetParameters(new LimiterEffect.LimiterParameters
         {
