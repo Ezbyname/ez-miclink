@@ -41,6 +41,7 @@ public static class MauiProgram
 #endif
 
 		// Register pages
+		builder.Services.AddTransient<Pages.SplashPage>();
 		builder.Services.AddSingleton<MainPage>();
 		builder.Services.AddTransient<Pages.SettingsPage>();
 

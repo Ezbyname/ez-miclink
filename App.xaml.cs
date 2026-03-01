@@ -18,15 +18,35 @@ public partial class App : Application
 
 	protected override Window CreateWindow(IActivationState? activationState)
 	{
-		var window = new Window(new AppShell());
+		// Start with splash screen
+		var splashPage = new SplashPage();
+		var window = new Window(splashPage);
 
-		// Check authentication on startup
+		// After splash, show main shell and check authentication
 		MainThread.BeginInvokeOnMainThread(async () =>
 		{
+			await ShowSplashScreenAsync(window);
 			await CheckAuthenticationAsync();
 		});
 
 		return window;
+	}
+
+	private async Task ShowSplashScreenAsync(Window window)
+	{
+		try
+		{
+			// Wait for 4 seconds to show splash screen
+			await Task.Delay(4000);
+
+			// Switch to main shell
+			window.Page = new AppShell();
+			MainPage = window.Page;
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[App] Error showing splash: {ex.Message}");
+		}
 	}
 
 	private async Task CheckAuthenticationAsync()

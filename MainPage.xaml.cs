@@ -396,8 +396,7 @@ public partial class MainPage : ContentPage
 			MessageSection.IsVisible = false;
 			ActionButtonsSection.IsVisible = false;
 			SecondaryActionBorder.IsVisible = false;
-			// TODO: BackButtonSection was removed
-			// BackButtonSection.IsVisible = false;
+			BackButtonSection.IsVisible = false;
 
 			switch (newState)
 			{
@@ -458,8 +457,8 @@ public partial class MainPage : ContentPage
 					DeviceStatusLabel.Opacity = 1.0;
 					AudioControlsSection.IsVisible = true;
 					ActionButtonsSection.IsVisible = false;
-					// TODO: BackButtonSection was removed
-					// BackButtonSection.IsVisible = true; // Show back button to return to device list
+					
+					BackButtonSection.IsVisible = true; // Show back button to return to device list
 					break;
 
 				case UIState.Failed:
@@ -933,7 +932,7 @@ public partial class MainPage : ContentPage
 				MessageSection.IsVisible = false;
 				ActionButtonsSection.IsVisible = false;
 				SecondaryActionBorder.IsVisible = false;
-				// TODO: BackButtonSection was removed
+				
 				// BackButtonSection.IsVisible = false;
 
 				// Clear selections

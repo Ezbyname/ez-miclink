@@ -177,6 +177,30 @@
                             </VerticalStackLayout>
                         </Grid>
 
+                        <!-- Back to Devices Button -->
+                        <Grid x:Name="BackButtonSection"
+                              Padding="30,20,30,20"
+                              IsVisible="False">
+                            <Border Stroke="#5B8FFF"
+                                    StrokeThickness="2"
+                                    BackgroundColor="Transparent"
+                                    HorizontalOptions="Center"
+                                    WidthRequest="200">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="18" />
+                                </Border.StrokeShape>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnBackButtonClicked" />
+                                </Border.GestureRecognizers>
+                                <Label Text="Back to Devices ←"
+                                       FontSize="14"
+                                       FontAttributes="Bold"
+                                       TextColor="#5B8FFF"
+                                       HorizontalOptions="Center"
+                                       Padding="0,12" />
+                            </Border>
+                        </Grid>
+
                         <!-- Audio Controls (when connected) -->
                         <VerticalStackLayout x:Name="AudioControlsSection"
                                            Padding="30,10,30,20"
@@ -219,12 +243,19 @@
 
                                     <Border Grid.Column="1"
                                             x:Name="StopAudioBtn"
-                                            StrokeThickness="0"
+                                            Stroke="#1A1A2E"
+                                            StrokeThickness="1"
                                             BackgroundColor="Transparent"
                                             IsVisible="False">
                                         <Border.StrokeShape>
                                             <RoundRectangle CornerRadius="18" />
                                         </Border.StrokeShape>
+                                        <Border.Shadow>
+                                            <Shadow Brush="Transparent"
+                                                    Offset="0,0"
+                                                    Radius="0"
+                                                    Opacity="0" />
+                                        </Border.Shadow>
                                         <Border.Background>
                                             <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
                                                 <GradientStop Color="#FF5252" Offset="0.0" />
@@ -234,7 +265,7 @@
                                         <Border.GestureRecognizers>
                                             <TapGestureRecognizer Tapped="OnStopAudioClicked" />
                                         </Border.GestureRecognizers>
-                                        <Label Text="⏹ Stop"
+                                        <Label Text="■ Stop"
                                                FontSize="16"
                                                FontAttributes="Bold"
                                                TextColor="White"
@@ -262,8 +293,8 @@
                                 </Grid>
 
                                 <Slider x:Name="VolumeSlider"
-                                        Minimum="50"
-                                        Maximum="200"
+                                        Minimum="0"
+                                        Maximum="100"
                                         Value="100"
                                         ValueChanged="OnVolumeChanged"
                                         MinimumTrackColor="#5B8FFF"

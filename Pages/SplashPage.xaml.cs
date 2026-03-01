@@ -7,14 +7,5 @@ public partial class SplashPage : ContentPage
 		InitializeComponent();
 	}
 
-	protected override async void OnAppearing()
-	{
-		base.OnAppearing();
-
-		// Wait for 4 seconds
-		await Task.Delay(4000);
-
-		// Navigate to main page using relative navigation (not absolute)
-		await Shell.Current.GoToAsync("mainpage");
-	}
+	// No need for OnAppearing - App.xaml.cs handles the timing and dismissal
 }
