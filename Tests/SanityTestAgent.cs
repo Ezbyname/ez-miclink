@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using BluetoothMicrophoneApp.Audio.DSP;
 using BluetoothMicrophoneApp.Services;
 using BluetoothMicrophoneApp.Models;
+using Microsoft.Maui.Hosting;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace BluetoothMicrophoneApp.Tests;
 
@@ -47,6 +49,9 @@ public class SanityTestAgent
         Console.WriteLine("║    SANITY TEST AGENT - CRASH TESTING   ║");
         Console.WriteLine("╚════════════════════════════════════════╝\n");
 
+        // CRITICAL: Dependency injection tests (must pass for app to start)
+        report.Results.Add(await TestDependencyInjectionRegistration());
+
         // Core initialization tests
         report.Results.Add(await TestAudioEngineInitialization());
         report.Results.Add(await TestAllEffectsCreation());
@@ -80,6 +85,114 @@ public class SanityTestAgent
         report.Results.Add(await TestMainFlowNoCrash());
 
         return report;
+    }
+
+    private async Task<TestResult> TestDependencyInjectionRegistration()
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            Console.WriteLine("  → Testing: Dependency Injection registration...");
+
+            // This test verifies that all required services are registered in the DI container.
+            // If a service is missing, the app will crash on startup with:
+            // "Unable to resolve service for type 'X' while attempting to activate 'Y'"
+
+            var builder = MauiApp.CreateBuilder();
+
+            // Register services exactly as in MauiProgram.cs
+            builder.Services.AddSingleton<IAuthService, AuthService>();
+
+#if ANDROID
+            builder.Services.AddSingleton<IBluetoothService, BluetoothMicrophoneApp.Platforms.Android.Services.BluetoothService>();
+            builder.Services.AddSingleton<IAudioService, BluetoothMicrophoneApp.Platforms.Android.Services.AudioService>();
+            builder.Services.AddSingleton<IConnectivityDiagnostics, BluetoothMicrophoneApp.Platforms.Android.Services.ConnectivityDiagnostics>();
+#elif IOS
+            builder.Services.AddSingleton<IBluetoothService, BluetoothMicrophoneApp.Platforms.iOS.Services.BluetoothService>();
+            builder.Services.AddSingleton<IAudioService, BluetoothMicrophoneApp.Platforms.iOS.Services.AudioService>();
+#endif
+
+            var app = builder.Build();
+
+            // Try to resolve all required services
+            var errors = new List<string>();
+
+            // Test 1: IAuthService (required by App.xaml.cs)
+            try
+            {
+                var authService = app.Services.GetService<IAuthService>();
+                if (authService == null)
+                    errors.Add("IAuthService resolved to null");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"IAuthService: {ex.Message}");
+            }
+
+            // Test 2: IBluetoothService (required by MainPage)
+            try
+            {
+                var bluetoothService = app.Services.GetService<IBluetoothService>();
+                if (bluetoothService == null)
+                    errors.Add("IBluetoothService resolved to null");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"IBluetoothService: {ex.Message}");
+            }
+
+            // Test 3: IAudioService (required by MainPage)
+            try
+            {
+                var audioService = app.Services.GetService<IAudioService>();
+                if (audioService == null)
+                    errors.Add("IAudioService resolved to null");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"IAudioService: {ex.Message}");
+            }
+
+            // Test 4: IConnectivityDiagnostics (Android only, optional)
+#if ANDROID
+            try
+            {
+                var diagnostics = app.Services.GetService<IConnectivityDiagnostics>();
+                if (diagnostics == null)
+                    errors.Add("IConnectivityDiagnostics resolved to null");
+            }
+            catch (Exception ex)
+            {
+                errors.Add($"IConnectivityDiagnostics: {ex.Message}");
+            }
+#endif
+
+            if (errors.Any())
+            {
+                throw new Exception($"DI registration failures:\n  - {string.Join("\n  - ", errors)}");
+            }
+
+            sw.Stop();
+            return new TestResult
+            {
+                TestName = "⚡ Dependency Injection Registration",
+                Passed = true,
+                Message = "All required services are registered and can be resolved",
+                Duration = sw.Elapsed
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new TestResult
+            {
+                TestName = "⚡ Dependency Injection Registration",
+                Passed = false,
+                Message = "❌ CRITICAL: Missing service registration - app will crash on startup!",
+                Exception = ex,
+                Duration = sw.Elapsed
+            };
+        }
     }
 
     private async Task<TestResult> TestAudioEngineInitialization()

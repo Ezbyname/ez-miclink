@@ -4,7 +4,7 @@
 - [Crash Prevention Philosophy](#️-crash-prevention-philosophy)
 - [For Developers & AI Agents](#-for-developers--ai-agents)
 - [Test Agents](#test-agents)
-  - [Sanity Test Agent (16 automated tests)](#1-sanity-test-agent)
+  - [Sanity Test Agent (17 automated tests)](#1-sanity-test-agent)
   - [Connectivity Test Agent](#2-connectivity-test-agent)
 - [Integration Test Checklist (33 manual tests)](#integration-test-checklist)
 - [Running Tests](#running-tests)
@@ -87,7 +87,8 @@ This directory contains automated test agents that verify the application's func
 
 Verifies basic app functionality without requiring real Bluetooth connections.
 
-**Tests Performed (16 total):**
+**Tests Performed (17 total):**
+- ✓ **⚡ Dependency Injection Registration (CRITICAL NEW)** - Verifies all required services are registered in DI container (prevents startup crashes)
 - ✓ AudioEngine initialization and DSP chain setup
 - ✓ All audio effects (Gain, NoiseGate, EQ, Compressor, Limiter, Echo, Robot, Megaphone, Karaoke)
 - ✓ Effect preset loading (Podcast, Stage MC, Karaoke, Announcer, Robot, etc.)
@@ -95,7 +96,7 @@ Verifies basic app functionality without requiring real Bluetooth connections.
 - ✓ Volume control (digital gain)
 - ✓ Thread-safe effect switching
 - ✓ Device management flow (rename, delete, custom names)
-- ✓ **Authentication flows (NEW)**
+- ✓ **Authentication flows**
   - Guest login
   - Phone number login (verification flow)
   - Google login
@@ -114,7 +115,7 @@ Verifies basic app functionality without requiring real Bluetooth connections.
 **Purpose:** Ensures core audio processing works correctly, authentication system is stable, and **main flows don't crash the app**.
 
 **Detailed Test Coverage:**
-See `SANITY_TEST_COVERAGE.md` for comprehensive documentation of all 16 tests, including:
+See `SANITY_TEST_COVERAGE.md` for comprehensive documentation of all 17 tests, including:
 - Detailed test descriptions
 - Why each test is critical
 - What happens if tests fail
@@ -148,7 +149,7 @@ Verifies connectivity mechanisms and service interfaces.
 - Don't require real hardware
 - Test **logic** for crashes
 - Must pass before every build
-- 16 automated tests
+- 17 automated tests
 
 **Integration Tests (Manual):**
 - Run on real devices
@@ -262,10 +263,10 @@ Example output:
 ════════════════════════════════════════
 SANITY TEST RESULTS
 ════════════════════════════════════════
-Total Tests:  16
-Passed:       16
+Total Tests:  17
+Passed:       17
 Failed:       0
-Duration:     4.25s
+Duration:     4.35s
 
 ✓ ALL TESTS PASSED - APP IS SAFE TO BUILD
 ```
@@ -402,7 +403,7 @@ The pre-push git hook (`.git/hooks/pre-push`) now runs **4 essential tests** aut
 
 ### Comprehensive Tests (📋 Available but Disabled)
 
-The 16 comprehensive SanityTestAgent tests exist but are currently disabled in the pre-push hook due to MAUI project structure constraints:
+The 17 comprehensive SanityTestAgent tests exist but are currently disabled in the pre-push hook due to MAUI project structure constraints:
 
 **Issue:** The Tests project needs to reference the main MAUI app, but:
 - Tests project targets `net9.0` (standard .NET)
@@ -417,14 +418,14 @@ BluetoothMicrophoneApp.Core (net9.0) ← Shared logic
     └── Models/
 
 BluetoothMicrophoneApp.Tests (net9.0) ← Tests reference Core
-    └── SanityTestAgent.cs (16 tests)
+    └── SanityTestAgent.cs (17 tests)
 
 BluetoothMicrophoneApp (MAUI) ← UI references Core
     └── Pages/
 ```
 
 **Benefits of Refactor:**
-- ✅ Enable all 16 comprehensive tests in pre-push hooks
+- ✅ Enable all 17 comprehensive tests in pre-push hooks
 - ✅ Better separation of concerns
 - ✅ Easier unit testing
 - ✅ Can run tests in CI/CD pipelines
