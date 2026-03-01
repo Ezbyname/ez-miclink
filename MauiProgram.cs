@@ -22,6 +22,9 @@ public static class MauiProgram
 #endif
 
 		// Register services
+		// AuthService is shared across all platforms
+		builder.Services.AddSingleton<IAuthService, AuthService>();
+
 #if ANDROID
 		builder.Services.AddSingleton<IBluetoothService, Platforms.Android.Services.BluetoothService>();
 
