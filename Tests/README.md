@@ -385,9 +385,69 @@ Recent bug fixes and their test coverage:
 - **Documentation:** See `AUTHENTICATION_AND_SETTINGS.md` for implementation details
 - **Test Coverage:** 6 new sanity tests added (automated) + 6 integration tests (manual)
 
+## Pre-Push Hook Status
+
+### Current State (✅ Working)
+
+The pre-push git hook (`.git/hooks/pre-push`) now runs **4 essential tests** automatically before every push:
+
+1. **Android Build** - Verifies 0 build errors
+2. **APK Generation** - Confirms APK file exists
+3. **Device Connection** - Checks ADB device connection
+4. **App Installation** - Validates successful installation
+
+**Script:** `sanity-test-build.ps1`
+**Status:** ✅ All 4 tests passing
+**Execution Time:** ~30-45 seconds
+
+### Comprehensive Tests (📋 Available but Disabled)
+
+The 16 comprehensive SanityTestAgent tests exist but are currently disabled in the pre-push hook due to MAUI project structure constraints:
+
+**Issue:** The Tests project needs to reference the main MAUI app, but:
+- Tests project targets `net9.0` (standard .NET)
+- Main app targets `net9.0-android`, `net9.0-ios`, `net9.0-maccatalyst` (MAUI platforms)
+- Cross-targeting not compatible without refactoring
+
+**Solution (Future):** Refactor to class library structure:
+```
+BluetoothMicrophoneApp.Core (net9.0) ← Shared logic
+    ├── Audio/DSP/
+    ├── Services/
+    └── Models/
+
+BluetoothMicrophoneApp.Tests (net9.0) ← Tests reference Core
+    └── SanityTestAgent.cs (16 tests)
+
+BluetoothMicrophoneApp (MAUI) ← UI references Core
+    └── Pages/
+```
+
+**Benefits of Refactor:**
+- ✅ Enable all 16 comprehensive tests in pre-push hooks
+- ✅ Better separation of concerns
+- ✅ Easier unit testing
+- ✅ Can run tests in CI/CD pipelines
+- ✅ Faster test execution (no MAUI overhead)
+
+### Manual Test Execution
+
+You can still run the 4 build tests manually:
+
+```powershell
+# Run pre-push tests manually
+.\sanity-test-build.ps1
+
+# Or test before pushing
+git push  # Tests run automatically
+```
+
+**Note:** The comprehensive SanityTestAgent tests are well-designed and ready to use once the project structure is refactored to a shared class library.
+
 ## Support
 
 For issues or questions about the test agents, check:
 - Test output messages
 - This README
 - Individual test implementations
+- Pre-push hook script: `sanity-test-build.ps1`
