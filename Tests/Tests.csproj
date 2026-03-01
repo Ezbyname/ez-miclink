@@ -8,4 +8,11 @@
     <StartupObject>BluetoothMicrophoneApp.Tests.BuildAndInstallTests</StartupObject>
   </PropertyGroup>
 
+  <!-- NOTE: ProjectReference to main MAUI app is disabled due to framework compatibility.
+       To enable comprehensive SanityTestAgent tests, the main app code needs to be
+       refactored into a shared class library that targets net9.0.
+
+       For now, SanityTestAgent.cs exists but cannot be executed in pre-push hooks.
+       The 4 build/deployment tests in sanity-test-build.ps1 provide good coverage. -->
+
 </Project>
