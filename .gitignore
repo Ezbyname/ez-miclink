@@ -57,3 +57,10 @@ _ReSharper*/
 # Windows
 Thumbs.db
 Desktop.ini
+
+# Temporary scripts and logs
+apply_fix.sh
+deploy.log
+fix_device_list.txt
+replace_device_logic.ps1
+test_output.txt
