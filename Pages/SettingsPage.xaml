@@ -14,7 +14,7 @@
 		</LinearGradientBrush>
 	</ContentPage.Background>
 
-	<Grid RowDefinitions="Auto,*">
+	<Grid x:Name="RootGrid" RowDefinitions="Auto,*">
 
 		<!-- Header Area -->
 		<Grid Grid.Row="0"

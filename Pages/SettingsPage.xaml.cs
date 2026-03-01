@@ -1,5 +1,6 @@
 using BluetoothMicrophoneApp.Models;
 using BluetoothMicrophoneApp.Services;
+using BluetoothMicrophoneApp.UI;
 using Microsoft.Maui.Storage;
 
 namespace BluetoothMicrophoneApp.Pages;
@@ -29,6 +30,9 @@ public partial class SettingsPage : ContentPage
 		InitializeComponent();
 		_authService = authService;
 		_currentUser = _authService.CurrentUser;
+
+		// Initialize DialogService with root grid for custom dialogs
+		DialogService.Initialize(RootGrid);
 
 		LoadAllSettings();
 		UpdateUserStatusCard();
@@ -120,14 +124,15 @@ public partial class SettingsPage : ContentPage
 		// For now, show info dialog
 		if (_currentUser == null)
 		{
-			await DisplayAlert("Account", "You are not signed in. Sign in to access account settings.", "OK");
+			await DialogService.ShowInfoAsync("Account", "You are not signed in. Sign in to access account settings.");
 		}
 		else if (_currentUser.IsGuest)
 		{
-			var result = await DisplayAlert("Guest Account",
+			var result = await DialogService.ShowConfirmationAsync(
+				"Guest Account",
 				"You're using a guest account. Would you like to sign in to save your data?",
-				"Sign In",
-				"Cancel");
+				confirmText: "Sign In",
+				cancelText: "Cancel");
 
 			if (result)
 			{
@@ -138,9 +143,8 @@ public partial class SettingsPage : ContentPage
 		}
 		else
 		{
-			await DisplayAlert("Account",
-				$"Account: {_currentUser.Name}\nProvider: {_currentUser.Provider}\n\nAccount management coming soon!",
-				"OK");
+			await DialogService.ShowInfoAsync("Account",
+				$"Account: {_currentUser.Name}\nProvider: {_currentUser.Provider}\n\nAccount management coming soon!");
 		}
 	}
 
@@ -236,9 +240,8 @@ public partial class SettingsPage : ContentPage
 		System.Diagnostics.Debug.WriteLine("[SettingsPage] Preferred device clicked");
 
 		// TODO: Show list of paired devices
-		await DisplayAlert("Preferred Device",
-			"Device selection coming soon!\n\nThis will show your paired Bluetooth devices.",
-			"OK");
+		await DialogService.ShowInfoAsync("Preferred Device",
+			"Device selection coming soon! This will show your paired Bluetooth devices.");
 	}
 
 	private void OnAutoReconnectToggled(object? sender, EventArgs e)
@@ -269,15 +272,14 @@ public partial class SettingsPage : ContentPage
 			intent.SetFlags(Android.Content.ActivityFlags.NewTask);
 			Android.App.Application.Context.StartActivity(intent);
 #else
-			await DisplayAlert("Bluetooth Settings",
-				"Please open Bluetooth settings from your device's Settings app.",
-				"OK");
+			await DialogService.ShowInfoAsync("Bluetooth Settings",
+				"Please open Bluetooth settings from your device's Settings app.");
 #endif
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[SettingsPage] Error opening Bluetooth settings: {ex.Message}");
-			await DisplayAlert("Error", "Could not open Bluetooth settings.", "OK");
+			await DialogService.ShowErrorAsync("Error", "Could not open Bluetooth settings.");
 		}
 	}
 
@@ -300,9 +302,8 @@ public partial class SettingsPage : ContentPage
 
 			System.Diagnostics.Debug.WriteLine($"[SettingsPage] Theme changed: {selected}");
 
-			await DisplayAlert("Theme",
-				$"Theme changed to {selected}.\n\nNote: Theme switching will be implemented in a future update.",
-				"OK");
+			await DialogService.ShowInfoAsync("Theme",
+				$"Theme changed to {selected}.\n\nNote: Theme switching will be implemented in a future update.");
 		}
 	}
 
@@ -321,9 +322,8 @@ public partial class SettingsPage : ContentPage
 
 			System.Diagnostics.Debug.WriteLine($"[SettingsPage] Language changed: {selected}");
 
-			await DisplayAlert("Language",
-				$"Language changed to {selected}.\n\nNote: Localization will be implemented in a future update.",
-				"OK");
+			await DialogService.ShowInfoAsync("Language",
+				$"Language changed to {selected}.\n\nNote: Localization will be implemented in a future update.");
 		}
 	}
 
@@ -361,11 +361,11 @@ public partial class SettingsPage : ContentPage
 	{
 		System.Diagnostics.Debug.WriteLine("[SettingsPage] Sign out clicked");
 
-		var confirmed = await DisplayAlert(
-			"Sign Out",
-			"Are you sure you want to sign out?",
-			"Sign Out",
-			"Cancel");
+		var confirmed = await DialogService.ShowConfirmationAsync(
+			title: "Sign Out",
+			message: "Are you sure you want to sign out?",
+			confirmText: "Sign Out",
+			cancelText: "Cancel");
 
 		if (confirmed)
 		{

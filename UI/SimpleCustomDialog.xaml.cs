@@ -70,14 +70,15 @@ public partial class SimpleCustomDialog : ContentView
 
                     foreach (var point in bulletPoints)
                     {
+                        // Neon-Space bullet point styling
                         var border = new Border
                         {
-                            BackgroundColor = Color.FromArgb("#1E1E38"),
-                            Stroke = Color.FromArgb("#4A90E2"),
+                            Background = new SolidColorBrush(Color.FromRgba(255, 255, 255, 0.15)),
+                            Stroke = Color.FromArgb("#00D2FF"),
                             StrokeThickness = 1,
-                            Padding = 12,
+                            Padding = 16,
                             Margin = new Thickness(0, 0, 0, 8),
-                            StrokeShape = new RoundRectangle { CornerRadius = 10 }
+                            StrokeShape = new RoundRectangle { CornerRadius = 16 }
                         };
 
                         var grid = new Grid
@@ -87,13 +88,14 @@ public partial class SimpleCustomDialog : ContentView
                                 new ColumnDefinition { Width = GridLength.Auto },
                                 new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) }
                             },
-                            ColumnSpacing = 10
+                            ColumnSpacing = 8
                         };
 
                         var checkmark = new Label
                         {
                             Text = "✓",
-                            TextColor = Color.FromArgb("#4CAF50"),
+                            TextColor = Color.FromArgb("#00D2FF"),
+                            FontFamily = "Inter",
                             FontSize = 16,
                             FontAttributes = FontAttributes.Bold,
                             VerticalOptions = LayoutOptions.Start,
@@ -103,8 +105,10 @@ public partial class SimpleCustomDialog : ContentView
                         var text = new Label
                         {
                             Text = point,
-                            TextColor = Color.FromArgb("#CCCCCC"),
-                            FontSize = 14,
+                            TextColor = Colors.White,
+                            Opacity = 0.7,
+                            FontFamily = "Inter",
+                            FontSize = 13,
                             LineHeight = 1.3
                         };
 

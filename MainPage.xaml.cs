@@ -18,6 +18,17 @@ public partial class MainPage : ContentPage
 	private CancellationTokenSource? _magnifyingGlassAnimationCts;
 	private CancellationTokenSource? _dotsAnimationCts;
 
+	// Scanning cancellation token
+	private CancellationTokenSource? _scanningCts;
+
+	// Audio operation flag to prevent race conditions
+	private bool _isAudioOperationInProgress = false;
+
+	// Bluetooth monitoring
+	private System.Timers.Timer? _bluetoothMonitor;
+	private bool _wasBluetoothEnabled = true;
+	private bool _isShowingBluetoothDialog = false; // Prevent multiple dialogs
+
 	private enum UIState
 	{
 		Initial,        // Just scan button
@@ -62,6 +73,9 @@ public partial class MainPage : ContentPage
 		// Small delay to ensure page is fully loaded
 		await Task.Delay(500);
 
+		// Start monitoring Bluetooth status
+		StartBluetoothMonitoring();
+
 		// Only auto-scan if we're in Initial state (not already connected)
 		if (_currentState == UIState.Initial && !_bluetoothService.IsConnected)
 		{
@@ -73,8 +87,126 @@ public partial class MainPage : ContentPage
 	{
 		base.OnDisappearing();
 
-		// Stop any running animations
-		StopScanningAnimations();
+		// Stop monitoring when page is not visible
+		StopBluetoothMonitoring();
+	}
+
+	private void StartBluetoothMonitoring()
+	{
+		StopBluetoothMonitoring(); // Stop any existing monitor
+
+		_bluetoothMonitor = new System.Timers.Timer(2000); // Check every 2 seconds
+		_bluetoothMonitor.Elapsed += async (s, e) =>
+		{
+			try
+			{
+				var isEnabled = _bluetoothService.IsBluetoothEnabled();
+
+				// Detect when Bluetooth state changes
+				if (_wasBluetoothEnabled && !isEnabled)
+				{
+					// Bluetooth was just disabled
+					System.Diagnostics.Debug.WriteLine("[MainPage] 🔴 Bluetooth was disabled");
+					await HandleBluetoothDisabled();
+				}
+				else if (!_wasBluetoothEnabled && isEnabled)
+				{
+					// Bluetooth was just enabled
+					System.Diagnostics.Debug.WriteLine("[MainPage] 🟢 Bluetooth was enabled");
+					await HandleBluetoothEnabled();
+				}
+
+				_wasBluetoothEnabled = isEnabled;
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Bluetooth monitor error: {ex.Message}");
+			}
+		};
+		_bluetoothMonitor.Start();
+
+		System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth monitoring started");
+	}
+
+	private void StopBluetoothMonitoring()
+	{
+		if (_bluetoothMonitor != null)
+		{
+			_bluetoothMonitor.Stop();
+			_bluetoothMonitor.Dispose();
+			_bluetoothMonitor = null;
+			System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth monitoring stopped");
+		}
+	}
+
+	private async Task HandleBluetoothDisabled()
+	{
+		// Prevent showing multiple dialogs
+		if (_isShowingBluetoothDialog)
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth disabled dialog already showing, skipping...");
+			return;
+		}
+
+		_isShowingBluetoothDialog = true;
+
+		await MainThread.InvokeOnMainThreadAsync(async () =>
+		{
+			try
+			{
+				// Clear device lists
+				_availableDevices.Clear();
+				AvailableDevicesView.ItemsSource = null;
+				RecentlyConnectedView.ItemsSource = null;
+
+				// Hide device list sections
+				AvailableDevicesSection.IsVisible = false;
+				RecentlyConnectedSection.IsVisible = false;
+
+				// If we were connected, disconnect first
+				if (_bluetoothService.IsConnected)
+				{
+					await _audioService.StopAudioRoutingAsync();
+					await _bluetoothService.DisconnectAsync();
+				}
+
+				// Return to initial state
+				SetState(UIState.Initial);
+				_selectedDevice = null;
+
+				// Show message to enable Bluetooth (only once)
+				await DialogService.ShowWarningAsync(
+					"Bluetooth Disabled",
+					"Bluetooth has been turned off. Please enable it to scan for devices.",
+					new List<string>
+					{
+						"Go to Settings → Bluetooth",
+						"Turn on Bluetooth",
+						"Return to the app to scan"
+					});
+			}
+			finally
+			{
+				_isShowingBluetoothDialog = false;
+			}
+		});
+	}
+
+	private async Task HandleBluetoothEnabled()
+	{
+		// Reset dialog flag when Bluetooth is re-enabled
+		_isShowingBluetoothDialog = false;
+
+		await MainThread.InvokeOnMainThreadAsync(async () =>
+		{
+			// Only rescan if we're in initial state (not already connected or in the middle of something)
+			if (_currentState == UIState.Initial)
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth enabled - starting automatic scan");
+				await Task.Delay(500); // Brief delay to let Bluetooth settle
+				await StartScanning();
+			}
+		});
 	}
 
 	private async void RequestPermissions()
@@ -106,27 +238,138 @@ public partial class MainPage : ContentPage
 		{
 			// On Android 12+ (API 31+), we need BLUETOOTH_SCAN and BLUETOOTH_CONNECT
 			// On older Android, we need BLUETOOTH and location permissions
+			System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+			System.Diagnostics.Debug.WriteLine("[Permissions] Checking Bluetooth permissions...");
 
-			var bluetoothStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+#if ANDROID
+			// CRITICAL: Use direct Android permission check (MAUI abstraction is unreliable)
+			System.Diagnostics.Debug.WriteLine("[Permissions] Using DIRECT Android runtime permission check...");
+			bool hasAndroidPermissions = Platforms.Android.Services.AndroidBluetoothPermissions.HasBluetoothPermissions();
+			System.Diagnostics.Debug.WriteLine($"[Permissions] Direct Android check result: {hasAndroidPermissions}");
 
-			if (bluetoothStatus != PermissionStatus.Granted)
+			if (hasAndroidPermissions)
 			{
-				System.Diagnostics.Debug.WriteLine("[Permissions] Requesting Bluetooth permissions...");
-				bluetoothStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+				System.Diagnostics.Debug.WriteLine("[Permissions] ✅ Android runtime permissions GRANTED");
+				System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+				return true;
 			}
 
-			if (bluetoothStatus != PermissionStatus.Granted)
+			// Permissions not granted - try requesting
+			System.Diagnostics.Debug.WriteLine("[Permissions] ⚠️ Android runtime permissions NOT GRANTED");
+			System.Diagnostics.Debug.WriteLine("[Permissions] Attempting to request permissions...");
+
+			Platforms.Android.Services.AndroidBluetoothPermissions.RequestBluetoothPermissions();
+
+			// Wait a bit for user to respond to permission dialog
+			await Task.Delay(2000);
+
+			// Check again
+			hasAndroidPermissions = Platforms.Android.Services.AndroidBluetoothPermissions.HasBluetoothPermissions();
+			System.Diagnostics.Debug.WriteLine($"[Permissions] After request, Android check result: {hasAndroidPermissions}");
+
+			if (hasAndroidPermissions)
 			{
-				System.Diagnostics.Debug.WriteLine("[Permissions] Bluetooth permission denied");
+				System.Diagnostics.Debug.WriteLine("[Permissions] ✅ Permissions granted by user");
+				System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+				return true;
+			}
+
+			// Still not granted - user must enable manually in Settings
+			System.Diagnostics.Debug.WriteLine("[Permissions] ❌ BLUETOOTH PERMISSIONS DENIED");
+			System.Diagnostics.Debug.WriteLine("[Permissions] User must enable manually in Android Settings");
+
+			await DialogService.ShowErrorAsync(
+				"Bluetooth Permission Required",
+				"E-z MicLink needs Bluetooth permission to find your devices.",
+				new List<string>
+				{
+					"1. Go to Settings → Apps → E-z MicLink",
+					"2. Tap 'Permissions'",
+					"3. Find 'Nearby devices' (or 'Bluetooth')",
+					"4. Set to 'Allow' (NOT 'Ask every time')",
+					"5. Return to the app and scan again"
+				});
+
+			System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+			return false;
+#else
+			// Non-Android platforms: use MAUI abstraction
+			var bluetoothStatus = await Permissions.CheckStatusAsync<Permissions.Bluetooth>();
+			System.Diagnostics.Debug.WriteLine($"[Permissions] MAUI status: {bluetoothStatus}");
+
+			if (bluetoothStatus == PermissionStatus.Granted)
+			{
+				System.Diagnostics.Debug.WriteLine("[Permissions] ✅ Bluetooth permissions ALREADY GRANTED");
+				System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+				return true;
+			}
+
+			// Permission not granted, need to request
+			if (bluetoothStatus == PermissionStatus.Denied)
+			{
+				System.Diagnostics.Debug.WriteLine("[Permissions] ⚠️ Permission was DENIED previously");
+				System.Diagnostics.Debug.WriteLine("[Permissions] User must enable in Settings manually");
+
+				await DialogService.ShowErrorAsync(
+					"Bluetooth Permission Required",
+					"E-z MicLink needs Bluetooth permission to scan for and connect to devices.",
+					new List<string>
+					{
+						"Go to Settings → Apps → E-z MicLink",
+						"Tap 'Permissions'",
+						"Enable 'Nearby devices' or 'Bluetooth'",
+						"Return to the app and try again"
+					});
+
+				System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
 				return false;
 			}
 
-			System.Diagnostics.Debug.WriteLine("[Permissions] Bluetooth permissions granted");
+			// Request permission
+			System.Diagnostics.Debug.WriteLine("[Permissions] Requesting Bluetooth permissions via MAUI...");
+			bluetoothStatus = await Permissions.RequestAsync<Permissions.Bluetooth>();
+			System.Diagnostics.Debug.WriteLine($"[Permissions] After MAUI request: {bluetoothStatus}");
+
+			if (bluetoothStatus != PermissionStatus.Granted)
+			{
+				System.Diagnostics.Debug.WriteLine("[Permissions] ❌ Bluetooth permission DENIED by user");
+
+				await DialogService.ShowErrorAsync(
+					"Permission Denied",
+					"Bluetooth permission is required to use this app.",
+					new List<string>
+					{
+						"Without this permission, the app cannot:",
+						"• Scan for Bluetooth devices",
+						"• Connect to your headphones/speakers",
+						"• Use Bluetooth microphones"
+					});
+
+				System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+				return false;
+			}
+
+			System.Diagnostics.Debug.WriteLine("[Permissions] ✅ Bluetooth permissions GRANTED via MAUI");
+			System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
 			return true;
+#endif
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[Permissions] Error checking Bluetooth permissions: {ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"[Permissions] ❌ ERROR checking Bluetooth permissions: {ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"[Permissions] Stack trace: {ex.StackTrace}");
+			System.Diagnostics.Debug.WriteLine("[Permissions] ========================================");
+
+			await DialogService.ShowErrorAsync(
+				"Permission Error",
+				$"Error checking Bluetooth permissions: {ex.Message}",
+				new List<string>
+				{
+					"Try restarting the app",
+					"Check Android version (requires Android 5.0+)",
+					"Contact support if issue persists"
+				});
+
 			return false;
 		}
 	}
@@ -139,35 +382,45 @@ public partial class MainPage : ContentPage
 		MainThread.BeginInvokeOnMainThread(() =>
 		{
 			// Hide everything first
+			HeaderSection.IsVisible = false;
+			ScanButton.IsVisible = false;
 			MainCard.IsVisible = false;
-			CompatibleDevicesSection.IsVisible = false;
 			AvailableDevicesSection.IsVisible = false;
+			RecentlyConnectedSection.IsVisible = false;
 			DeviceInfoSection.IsVisible = false;
 			AudioControlsSection.IsVisible = false;
 			MessageSection.IsVisible = false;
 			ActionButtonsSection.IsVisible = false;
 			SecondaryActionBorder.IsVisible = false;
+			BackButtonSection.IsVisible = false;
 
 			switch (newState)
 			{
 				case UIState.Initial:
-					// Just scan button visible (default)
+					// Just header and scan button visible (default)
+					HeaderSection.IsVisible = true;
+					ScanButton.IsVisible = true;
 					break;
 
 				case UIState.DeviceList:
+					// Show header, scan button and device list sections
+					HeaderSection.IsVisible = true;
+					ScanButton.IsVisible = true;
 					// Show sections based on what's populated (handled in StartScanning)
 					// Clear selections to allow re-selecting the same device
-					CompatibleDevicesView.SelectedItem = null;
+					AvailableDevicesView.SelectedItem = null;
 					AvailableDevicesView.SelectedItem = null;
 					break;
 
 				case UIState.DeviceSelected:
+					// Hide header and scan button, show card
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
 					RenameButton.IsVisible = false; // Hide rename button until connected
 					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Ready to connect";
-					DeviceStatusLabel.TextColor = Color.FromArgb("#8E8E93");
+					DeviceStatusLabel.TextColor = Colors.White;
+					DeviceStatusLabel.Opacity = 0.6;
 					ActionButtonsSection.IsVisible = true;
 					PrimaryActionLabel.Text = "Connect";
 					SecondaryActionBorder.IsVisible = true;
@@ -176,33 +429,40 @@ public partial class MainPage : ContentPage
 					break;
 
 				case UIState.Connecting:
+					// Hide header and scan button, show card
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
 					RenameButton.IsVisible = false;
 					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Connecting...";
-					DeviceStatusLabel.TextColor = Color.FromArgb("#4A90E2");
+					DeviceStatusLabel.TextColor = Color.FromArgb("#00D2FF");
+					DeviceStatusLabel.Opacity = 1.0;
 					ActionButtonsSection.IsVisible = false;
 					break;
 
 				case UIState.Connected:
+					// Hide header and scan button completely, show ONLY the connected card
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
 					RenameButton.IsVisible = true; // Show rename button when connected
 					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "✓ Connected";
 					DeviceStatusLabel.TextColor = Color.FromArgb("#4CAF50");
+					DeviceStatusLabel.Opacity = 1.0;
 					AudioControlsSection.IsVisible = true;
 					ActionButtonsSection.IsVisible = false;
+					BackButtonSection.IsVisible = true; // Show back button to return to device list
 					break;
 
 				case UIState.Failed:
+					// Hide header and scan button, show card
 					MainCard.IsVisible = true;
 					DeviceInfoSection.IsVisible = true;
 					RenameButton.IsVisible = false;
 					DeviceNameLabel.Text = GetDeviceDisplayName(_selectedDevice);
 					DeviceStatusLabel.Text = "Connection failed";
-					DeviceStatusLabel.TextColor = Color.FromArgb("#FF5252");
+					DeviceStatusLabel.TextColor = Color.FromArgb("#FB7185");
+					DeviceStatusLabel.Opacity = 1.0;
 
 					MessageSection.IsVisible = true;
 					MessageLabel.Text = $"Could not connect to {GetDeviceDisplayName(_selectedDevice)}.";
@@ -235,12 +495,12 @@ public partial class MainPage : ContentPage
 		{
 			var border = new Border
 			{
-				BackgroundColor = Color.FromArgb("#1E1E38"),
-				Stroke = Color.FromArgb("#4A90E2"),
+				Background = new SolidColorBrush(Color.FromRgba(255, 255, 255, 0.05)),
+				Stroke = Color.FromArgb("#00D2FF"),
 				StrokeThickness = 1,
-				Padding = 12,
+				Padding = 16,
 				Margin = new Thickness(0, 0, 0, 8),
-				StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 10 }
+				StrokeShape = new Microsoft.Maui.Controls.Shapes.RoundRectangle { CornerRadius = 20 }
 			};
 
 			var grid = new Grid
@@ -263,7 +523,9 @@ public partial class MainPage : ContentPage
 			var text = new Label
 			{
 				Text = reason,
-				TextColor = Color.FromArgb("#CCCCCC"),
+				TextColor = Colors.White,
+				Opacity = 0.6,
+				FontFamily = "Inter",
 				FontSize = 13,
 				LineHeight = 1.3
 			};
@@ -280,50 +542,181 @@ public partial class MainPage : ContentPage
 	}
 
 	// Event Handlers
+	private async void OnDebugPermissionsClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			var messages = new List<string>();
+
+#if ANDROID
+			System.Diagnostics.Debug.WriteLine("[Debug] Checking Android permissions...");
+
+			var context = Microsoft.Maui.ApplicationModel.Platform.CurrentActivity;
+			if (context == null)
+			{
+				messages.Add("❌ Cannot get Android context");
+			}
+			else
+			{
+				messages.Add($"✅ Android API: {Android.OS.Build.VERSION.SdkInt}");
+
+				if (Android.OS.Build.VERSION.SdkInt >= Android.OS.BuildVersionCodes.S)
+				{
+					// Check Android 12+ permissions
+					var connectPerm = context.CheckSelfPermission(Android.Manifest.Permission.BluetoothConnect);
+					var scanPerm = context.CheckSelfPermission(Android.Manifest.Permission.BluetoothScan);
+
+					messages.Add($"BLUETOOTH_CONNECT: {connectPerm}");
+					messages.Add($"BLUETOOTH_SCAN: {scanPerm}");
+
+					if (connectPerm != Android.Content.PM.Permission.Granted)
+					{
+						messages.Add("❌ BLUETOOTH_CONNECT is DENIED!");
+					}
+					if (scanPerm != Android.Content.PM.Permission.Granted)
+					{
+						messages.Add("❌ BLUETOOTH_SCAN is DENIED!");
+					}
+				}
+				else
+				{
+					messages.Add("Android 11 or lower - checking legacy permissions");
+					var btPerm = context.CheckSelfPermission(Android.Manifest.Permission.Bluetooth);
+					var btAdminPerm = context.CheckSelfPermission(Android.Manifest.Permission.BluetoothAdmin);
+					var locPerm = context.CheckSelfPermission(Android.Manifest.Permission.AccessFineLocation);
+
+					messages.Add($"BLUETOOTH: {btPerm}");
+					messages.Add($"BLUETOOTH_ADMIN: {btAdminPerm}");
+					messages.Add($"LOCATION: {locPerm}");
+				}
+
+				// Check Bluetooth adapter
+				var adapter = Android.Bluetooth.BluetoothAdapter.DefaultAdapter;
+				if (adapter == null)
+				{
+					messages.Add("❌ BluetoothAdapter is NULL!");
+				}
+				else
+				{
+					messages.Add($"✅ Bluetooth enabled: {adapter.IsEnabled}");
+
+					try
+					{
+						var bonded = adapter.BondedDevices;
+						if (bonded == null)
+						{
+							messages.Add("❌ BondedDevices returned NULL!");
+							messages.Add("This means permission is denied");
+						}
+						else
+						{
+							messages.Add($"✅ BondedDevices count: {bonded.Count}");
+							foreach (var device in bonded)
+							{
+								messages.Add($"  → {device.Name} ({device.Address})");
+							}
+						}
+					}
+					catch (Java.Lang.SecurityException secEx)
+					{
+						messages.Add($"❌ SecurityException: {secEx.Message}");
+						messages.Add("BLUETOOTH_CONNECT permission is missing!");
+					}
+				}
+			}
+#else
+			messages.Add("Not running on Android");
+#endif
+
+			await DialogService.ShowInfoAsync(
+				"Permission Debug Info",
+				"Current Bluetooth permission status:",
+				messages);
+		}
+		catch (Exception ex)
+		{
+			await DialogService.ShowErrorAsync("Debug Error", $"Error: {ex.Message}");
+		}
+	}
+
 	private async void OnScanClicked(object? sender, EventArgs e)
 	{
 		await StartScanning();
 	}
 
+	private void OnStopScanClicked(object? sender, EventArgs e)
+	{
+		System.Diagnostics.Debug.WriteLine("[MainPage] Stop Scanning button clicked");
+
+		// Cancel the scanning operation
+		_scanningCts?.Cancel();
+
+		// Hide the stop button and re-enable scan button immediately
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			StopScanButton.IsVisible = false;
+			ScanButton.IsEnabled = true;
+		});
+
+		// Stop animations immediately
+		_magnifyingGlassAnimationCts?.Cancel();
+		_dotsAnimationCts?.Cancel();
+
+		System.Diagnostics.Debug.WriteLine("[MainPage] Scan cancellation requested");
+	}
+
 	private async Task StartScanning()
 	{
+		// Cancel any existing scan
+		_scanningCts?.Cancel();
+		_scanningCts?.Dispose();
+		_scanningCts = new CancellationTokenSource();
+
 		try
 		{
-			System.Diagnostics.Debug.WriteLine("[MainPage] Starting scan for devices");
+			System.Diagnostics.Debug.WriteLine("[MainPage] ==========================================");
+			System.Diagnostics.Debug.WriteLine("[MainPage] ========== SCAN START ==========");
+			System.Diagnostics.Debug.WriteLine("[MainPage] ==========================================");
 
-			// Show loading
+			// Show loading and Stop Scanning button
 			ScanButton.IsEnabled = false;
-			ScanningIndicator.IsRunning = true;
-			ScanningIndicator.IsVisible = true;
+			StopScanButton.IsVisible = true;
 
 			// Start scanning animations
 			StartScanningAnimations();
 
 			// Check and request Bluetooth permissions
+			System.Diagnostics.Debug.WriteLine("[MainPage] ========== PERMISSION CHECK START ==========");
 			var hasPermissions = await CheckBluetoothPermissionsAsync();
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Permission check result: {hasPermissions}");
+			System.Diagnostics.Debug.WriteLine("[MainPage] ========== PERMISSION CHECK END ==========");
+
 			if (!hasPermissions)
 			{
-				await DialogService.ShowErrorAsync(
-					"Permissions Required",
-					"Bluetooth permissions are required to scan for devices.",
-					new List<string>
-					{
-						"Grant Bluetooth permissions in Settings",
-						"Restart the app and try again"
-					});
+				System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN ABORTED: No Bluetooth permissions");
+				System.Diagnostics.Debug.WriteLine("[MainPage] ==========================================");
 				return;
 			}
+
+			// Check if scanning was cancelled
+			if (_scanningCts?.Token.IsCancellationRequested == true)
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN CANCELLED by user");
+				return;
+			}
+
+			System.Diagnostics.Debug.WriteLine("[MainPage] ✅ Permissions granted, proceeding with scan");
 
 			// Check if Bluetooth is enabled
 			if (!_bluetoothService.IsBluetoothEnabled())
 			{
 				System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth is OFF, asking user for permission to enable");
 
-				var enableBluetooth = await DisplayAlert(
+				var enableBluetooth = await DialogService.ShowConfirmationAsync(
 					"Bluetooth is Off",
 					"Bluetooth is currently turned off. Would you like to turn it on?",
-					"Turn On",
-					"Cancel");
+					confirmText: "Turn On",
+					cancelText: "Cancel");
 
 				if (enableBluetooth)
 				{
@@ -363,9 +756,101 @@ public partial class MainPage : ContentPage
 				}
 			}
 
-			var devices = await _bluetoothService.ScanForDevicesAsync();
+			// Check if scanning was cancelled
+			if (_scanningCts?.Token.IsCancellationRequested == true)
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN CANCELLED by user");
+				return;
+			}
+
+			// First, check for devices already connected at system level
+			System.Diagnostics.Debug.WriteLine("[MainPage] ========== STEP 1: Check Already-Connected Devices ==========");
+			List<BluetoothDevice> alreadyConnectedDevices;
+			try
+			{
+				alreadyConnectedDevices = await _bluetoothService.GetConnectedDevicesAsync();
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Found {alreadyConnectedDevices.Count} already-connected devices");
+			}
+			catch (Exception ex)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ⚠️ Error checking connected devices: {ex.Message}");
+				alreadyConnectedDevices = new List<BluetoothDevice>();
+			}
+
+			// Check if scanning was cancelled
+			if (_scanningCts?.Token.IsCancellationRequested == true)
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN CANCELLED by user");
+				return;
+			}
+
+			// Now scan for all available devices
+			System.Diagnostics.Debug.WriteLine("[MainPage] ========== STEP 2: Scan for All Devices ==========");
+			System.Diagnostics.Debug.WriteLine("[MainPage] Calling _bluetoothService.ScanForDevicesAsync()...");
+			List<BluetoothDevice> devices;
+
+			try
+			{
+				devices = await _bluetoothService.ScanForDevicesAsync();
+
+				// Check if scanning was cancelled immediately after scan
+				if (_scanningCts?.Token.IsCancellationRequested == true)
+				{
+					System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN CANCELLED by user after scan completed");
+					return;
+				}
+
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Scan completed: {devices.Count} devices found");
+
+				if (devices.Count == 0)
+				{
+					System.Diagnostics.Debug.WriteLine("[MainPage] ⚠️⚠️⚠️ WARNING: Scan returned ZERO devices! ⚠️⚠️⚠️");
+					System.Diagnostics.Debug.WriteLine("[MainPage] This usually means:");
+					System.Diagnostics.Debug.WriteLine("[MainPage]   1. BLUETOOTH_CONNECT permission is missing/denied");
+					System.Diagnostics.Debug.WriteLine("[MainPage]   2. No devices are paired in Android Bluetooth settings");
+					System.Diagnostics.Debug.WriteLine("[MainPage]   3. Bluetooth adapter returned null for BondedDevices");
+				}
+			}
+			catch (UnauthorizedAccessException uaEx)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ❌ UnauthorizedAccessException during scan!");
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Message: {uaEx.Message}");
+
+				await DialogService.ShowErrorAsync(
+					"Permission Denied",
+					"Cannot access Bluetooth devices.",
+					new List<string>
+					{
+						"CLOSE the app completely (swipe away from recent apps)",
+						"Go to Settings → Apps → E-z MicLink",
+						"Tap 'Permissions' → 'Nearby devices'",
+						"Change from 'Ask every time' to 'Allow'",
+						"Open E-z MicLink and try scanning again"
+					});
+				return;
+			}
+
+			// Merge the lists, marking already-connected devices
+			foreach (var alreadyConnected in alreadyConnectedDevices)
+			{
+				var existingDevice = devices.FirstOrDefault(d => d.Address == alreadyConnected.Address);
+				if (existingDevice != null)
+				{
+					// Mark existing device as connected
+					existingDevice.IsConnected = true;
+					System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Device {existingDevice.Name} is already connected at system level");
+				}
+				else
+				{
+					// Add the connected device if not in scan results
+					devices.Add(alreadyConnected);
+					System.Diagnostics.Debug.WriteLine($"[MainPage] ➕ Added already-connected device {alreadyConnected.Name}");
+				}
+			}
+
 			_availableDevices = devices;
 
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ===== Scan returned {_availableDevices.Count} devices =====");
 			System.Diagnostics.Debug.WriteLine($"[MainPage] ===== Applying Custom Names to {_availableDevices.Count} Devices =====");
 
 			// Apply custom names to devices
@@ -388,34 +873,85 @@ public partial class MainPage : ContentPage
 
 			if (_availableDevices.Any())
 			{
-				// Split devices into compatible (connected before) and available (new)
-				var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
+			// NEW LOGIC: Show recently connected devices separately, but ALL devices in Available
+			// Recently Paired = Devices that have connection history (were successfully connected before)
+			var recentlyPairedDevices = _availableDevices
+				.Where(d => Services.DeviceConnectionHistory.HasConnectedBefore(d.Address))
+				.Take(3)  // Show max 3 recently paired devices
+				.ToList();
 
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Split results: {compatible.Count} compatible, {available.Count} available");
+			// Available Devices = ALL devices (including paired, connected, everything)
+			var availableDevices = _availableDevices.ToList();
 
-				// Show compatible devices section if we have any
-				if (compatible.Any())
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ========== STEP 3: Display Devices ==========");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Recently Paired Devices: {recentlyPairedDevices.Count} devices");
+			foreach (var device in recentlyPairedDevices)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}, IsConnected: {device.IsConnected}");
+			}
+
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Available Devices: {availableDevices.Count} devices (ALL devices)");
+			foreach (var device in availableDevices)
+			{
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}, IsConnected: {device.IsConnected}");
+			}
+
+			// CRITICAL FIX: Update UI directly without SetState to avoid race condition
+			// SetState uses MainThread.BeginInvokeOnMainThread which creates a race with our UI updates
+			System.Diagnostics.Debug.WriteLine("[MainPage] Updating UI directly on main thread...");
+
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] Starting UI update...");
+
+				// Update state tracker
+				_currentState = UIState.DeviceList;
+
+				// Hide everything except what we need
+				HeaderSection.IsVisible = true;
+				ScanButton.IsVisible = true;
+				MainCard.IsVisible = false;
+				DeviceInfoSection.IsVisible = false;
+				AudioControlsSection.IsVisible = false;
+				MessageSection.IsVisible = false;
+				ActionButtonsSection.IsVisible = false;
+				SecondaryActionBorder.IsVisible = false;
+				BackButtonSection.IsVisible = false;
+
+				// Clear selections
+				AvailableDevicesView.SelectedItem = null;
+				RecentlyConnectedView.SelectedItem = null;
+
+				// Show Recently Paired Devices section (devices with connection history)
+				if (recentlyPairedDevices.Any())
 				{
-					CompatibleDevicesView.ItemsSource = compatible;
-					CompatibleDevicesSection.IsVisible = true;
+					System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting RecentlyConnectedView with {recentlyPairedDevices.Count} devices");
+					RecentlyConnectedView.ItemsSource = recentlyPairedDevices;
+					RecentlyConnectedSection.IsVisible = true;
+					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ RecentlyConnectedSection is now VISIBLE");
 				}
 				else
 				{
-					CompatibleDevicesSection.IsVisible = false;
+					RecentlyConnectedSection.IsVisible = false;
+					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] RecentlyConnectedSection hidden (no recently paired devices)");
 				}
 
-				// Show available devices section if we have any
-				if (available.Any())
+				// Show Available Devices section (ALL devices - paired, connected, unpaired, everything)
+				if (availableDevices.Any())
 				{
-					AvailableDevicesView.ItemsSource = available;
+					System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting AvailableDevicesView with {availableDevices.Count} devices");
+					AvailableDevicesView.ItemsSource = availableDevices;
 					AvailableDevicesSection.IsVisible = true;
+					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ AvailableDevicesSection is now VISIBLE");
 				}
 				else
 				{
 					AvailableDevicesSection.IsVisible = false;
+					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] AvailableDevicesSection hidden (no devices)");
 				}
 
-				SetState(UIState.DeviceList);
+				System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ========== UI UPDATE COMPLETE ==========");
+			});
 			}
 			else
 			{
@@ -431,6 +967,11 @@ public partial class MainPage : ContentPage
 					});
 			}
 		}
+		catch (OperationCanceledException)
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Scan was cancelled by user");
+			// Don't show error dialog for user-initiated cancellation
+		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Scan error: {ex.Message}");
@@ -439,11 +980,53 @@ public partial class MainPage : ContentPage
 		finally
 		{
 			// Stop scanning animations
-			StopScanningAnimations();
+			await StopScanningAnimationsAsync();
 
-			ScanButton.IsEnabled = true;
-			ScanningIndicator.IsRunning = false;
-			ScanningIndicator.IsVisible = false;
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				ScanButton.IsEnabled = true;
+				StopScanButton.IsVisible = false;
+			});
+		}
+	}
+
+	private void OnDeviceTapped(object? sender, TappedEventArgs e)
+	{
+		// Get the device from the binding context
+		if (sender is Border border && border.BindingContext is BluetoothDevice device)
+		{
+			_selectedDevice = device;
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Device tapped: {_selectedDevice?.Name}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
+
+			// Check if this device is already connected at system level
+			if (_selectedDevice != null && _selectedDevice.IsConnected)
+			{
+				// Device is already connected at system level - use it immediately
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
+
+				// Mark as our connected device (no need to establish connection)
+				_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
+
+				// Go directly to connected state
+				SetState(UIState.Connected);
+			}
+			// Check if we're already connected to this device in our app
+			else if (_bluetoothService.IsConnected &&
+			    _bluetoothService.ConnectedDevice != null &&
+			    _selectedDevice != null &&
+			    _bluetoothService.ConnectedDevice.Address == _selectedDevice.Address)
+			{
+				// Already connected to this device via our app - go directly to engagement view
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Already connected to {_selectedDevice.Name} via app, going to engagement view");
+				SetState(UIState.Connected);
+			}
+			else
+			{
+				// Not connected - show connect button
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Not connected to this device, showing connect button");
+				SetState(UIState.DeviceSelected);
+			}
 		}
 	}
 
@@ -453,20 +1036,33 @@ public partial class MainPage : ContentPage
 		{
 			_selectedDevice = e.CurrentSelection[0] as BluetoothDevice;
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Device selected: {_selectedDevice?.Name}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
 
-			// Check if we're already connected to this device
-			if (_bluetoothService.IsConnected &&
+			// Check if this device is already connected at system level
+			if (_selectedDevice != null && _selectedDevice.IsConnected)
+			{
+				// Device is already connected at system level - use it immediately
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
+
+				// Mark as our connected device (no need to establish connection)
+				_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
+
+				// Go directly to connected state
+				SetState(UIState.Connected);
+			}
+			// Check if we're already connected to this device in our app
+			else if (_bluetoothService.IsConnected &&
 			    _bluetoothService.ConnectedDevice != null &&
 			    _selectedDevice != null &&
 			    _bluetoothService.ConnectedDevice.Address == _selectedDevice.Address)
 			{
-				// Already connected to this device - go directly to engagement view
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Already connected to {_selectedDevice.Name}, going to engagement view");
+				// Already connected to this device via our app - go directly to engagement view
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Already connected to {_selectedDevice.Name} via app, going to engagement view");
 				SetState(UIState.Connected);
 			}
 			else
 			{
-				// Not connected or different device - show connect button
+				// Not connected - show connect button
 				System.Diagnostics.Debug.WriteLine($"[MainPage] Not connected to this device, showing connect button");
 				SetState(UIState.DeviceSelected);
 			}
@@ -532,25 +1128,36 @@ public partial class MainPage : ContentPage
 
 			if (success)
 			{
-				// Mark this device as successfully connected in history
-				Services.DeviceConnectionHistory.MarkDeviceAsConnected(_selectedDevice.Address);
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Device marked as compatible: {_selectedDevice.Address}");
+				// Verify connection is actually established by waiting briefly and checking status
+				await Task.Delay(500);
 
-				SetState(UIState.Connected);
+				// Double-check that we're still connected
+				if (_bluetoothService.IsConnected)
+				{
+					// Mark this device as successfully connected in history
+					Services.DeviceConnectionHistory.MarkDeviceAsConnected(_selectedDevice.Address);
+					System.Diagnostics.Debug.WriteLine($"[MainPage] Device marked as compatible: {_selectedDevice.Address}");
 
-				// Show success message after animation
-				await Task.Delay(1000);
-				await DialogService.ShowConnectedAsync(_selectedDevice.Name);
+					SetState(UIState.Connected);
+					System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Successfully connected to {_selectedDevice.Name}");
+				}
+				else
+				{
+					// Connection dropped immediately after "success"
+					System.Diagnostics.Debug.WriteLine($"[MainPage] ⚠️ Connection dropped immediately after success");
+					await HandleConnectionFailure(_selectedDevice.Name);
+				}
 			}
 			else
 			{
 				// Connection failed - show alert and rescan
+				System.Diagnostics.Debug.WriteLine($"[MainPage] ❌ Connection failed for {_selectedDevice.Name}");
 				await HandleConnectionFailure(_selectedDevice.Name);
 			}
 		}
 		catch (Exception ex)
 		{
-			System.Diagnostics.Debug.WriteLine($"[MainPage] Connection error: {ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] ❌ Connection error: {ex.Message}");
 			// Connection failed with exception - show alert and rescan
 			await HandleConnectionFailure(_selectedDevice?.Name ?? "device");
 		}
@@ -567,10 +1174,16 @@ public partial class MainPage : ContentPage
 		await Task.Delay(500);
 
 		// Show alert dialog
-		await DisplayAlert(
+		await DialogService.ShowErrorAsync(
 			"Connection Failed",
-			$"Failed to connect to {deviceName}.\n\nThe device might be out of range or already connected to another device.",
-			"OK");
+			$"Failed to connect to {deviceName}.",
+			new List<string>
+			{
+				"Device might be out of range",
+				"Device might be connected to another phone",
+				"Try moving closer to the device",
+				"Try forgetting and re-pairing the device"
+			});
 
 		// Go back to initial state (home screen)
 		SetState(UIState.Initial);
@@ -601,30 +1214,105 @@ public partial class MainPage : ContentPage
 
 	private async void OnStartAudioClicked(object? sender, EventArgs e)
 	{
+		// Prevent multiple concurrent operations
+		if (_isAudioOperationInProgress)
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Audio operation already in progress, ignoring Start click");
+			return;
+		}
+
+		_isAudioOperationInProgress = true;
+
 		try
 		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Starting audio routing...");
+
+			// Disable both buttons during operation
+			StartAudioBtn.IsEnabled = false;
+			StopAudioBtn.IsEnabled = false;
+
 			await _audioService.StartAudioRoutingAsync();
-			StartAudioBtn.IsVisible = false;
-			StopAudioBtn.IsVisible = true;
+
+			System.Diagnostics.Debug.WriteLine("[MainPage] Audio routing started successfully");
+
+			// Update UI
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				StartAudioBtn.IsVisible = false;
+				StartAudioBtn.IsEnabled = true;
+				StopAudioBtn.IsVisible = true;
+				StopAudioBtn.IsEnabled = true;
+			});
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Start audio error: {ex.Message}");
-			await DialogService.ShowErrorAsync("Audio Error", $"Failed to start audio.\\n\\n{ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Stack trace: {ex.StackTrace}");
+
+			// Re-enable buttons on error
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				StartAudioBtn.IsEnabled = true;
+				StopAudioBtn.IsEnabled = true;
+			});
+
+			await DialogService.ShowErrorAsync("Audio Error", $"Failed to start audio.\n\n{ex.Message}");
+		}
+		finally
+		{
+			_isAudioOperationInProgress = false;
 		}
 	}
 
 	private async void OnStopAudioClicked(object? sender, EventArgs e)
 	{
+		// Prevent multiple concurrent operations
+		if (_isAudioOperationInProgress)
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Audio operation already in progress, ignoring Stop click");
+			return;
+		}
+
+		_isAudioOperationInProgress = true;
+
 		try
 		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Stopping audio routing...");
+
+			// Disable both buttons during operation
+			StartAudioBtn.IsEnabled = false;
+			StopAudioBtn.IsEnabled = false;
+
 			await _audioService.StopAudioRoutingAsync();
-			StartAudioBtn.IsVisible = true;
-			StopAudioBtn.IsVisible = false;
+
+			System.Diagnostics.Debug.WriteLine("[MainPage] Audio routing stopped successfully");
+
+			// Update UI
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				StartAudioBtn.IsVisible = true;
+				StartAudioBtn.IsEnabled = true;
+				StopAudioBtn.IsVisible = false;
+				StopAudioBtn.IsEnabled = true;
+			});
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Stop audio error: {ex.Message}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Stack trace: {ex.StackTrace}");
+
+			// Re-enable buttons on error
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				StartAudioBtn.IsEnabled = true;
+				StopAudioBtn.IsEnabled = true;
+			});
+
+			// Don't show dialog for stop errors (less disruptive)
+		}
+		finally
+		{
+			_isAudioOperationInProgress = false;
 		}
 	}
 
@@ -653,10 +1341,33 @@ public partial class MainPage : ContentPage
 			await _bluetoothService.DisconnectAsync();
 			SetState(UIState.Initial);
 			_selectedDevice = null;
+
+			// Rescan for devices after disconnect
+			await Task.Delay(300);
+			await StartScanning();
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Disconnect error: {ex.Message}");
+		}
+	}
+
+	private async void OnBackButtonClicked(object? sender, EventArgs e)
+	{
+		try
+		{
+			// Go back to device list while staying connected
+			System.Diagnostics.Debug.WriteLine("[MainPage] Back button clicked - returning to device list");
+			_selectedDevice = null;
+			SetState(UIState.Initial);
+
+			// Rescan to show device list
+			await Task.Delay(300);
+			await StartScanning();
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Back button error: {ex.Message}");
 		}
 	}
 
@@ -667,9 +1378,11 @@ public partial class MainPage : ContentPage
 		try
 		{
 			var currentName = DeviceNameManager.GetDisplayName(_selectedDevice.Address, _selectedDevice.Name);
-			var result = await DisplayPromptAsync(
-				"Rename Device",
-				"Enter a custom name for this device:",
+			var result = await DialogService.ShowTextInputAsync(
+				title: "Rename Device",
+				message: "Enter a custom name for this device:",
+				icon: "✏️",
+				placeholder: "My Device",
 				initialValue: currentName,
 				maxLength: 30,
 				keyboard: Keyboard.Text);
@@ -686,10 +1399,9 @@ public partial class MainPage : ContentPage
 				else
 				{
 					System.Diagnostics.Debug.WriteLine($"[MainPage] ERROR: Failed to save device name!");
-					await DisplayAlert(
+					await DialogService.ShowErrorAsync(
 						"Save Failed",
-						"Failed to save the device name. Please try again.",
-						"OK");
+						"Failed to save the device name. Please try again.");
 				}
 			}
 		}
@@ -714,9 +1426,11 @@ public partial class MainPage : ContentPage
 
 				System.Diagnostics.Debug.WriteLine($"[MainPage] Current Display Name: '{currentName}'");
 
-				var result = await DisplayPromptAsync(
-					"Rename Device",
-					"Enter a custom name for this device:",
+				var result = await DialogService.ShowTextInputAsync(
+					title: "Rename Device",
+					message: "Enter a custom name for this device:",
+					icon: "✏️",
+					placeholder: "My Device",
 					initialValue: currentName,
 					maxLength: 30,
 					keyboard: Keyboard.Text);
@@ -738,21 +1452,24 @@ public partial class MainPage : ContentPage
 						System.Diagnostics.Debug.WriteLine($"[MainPage] Updated device.Name to: '{device.Name}'");
 
 						// Refresh both collection views to show the new name
-						var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
-						CompatibleDevicesView.ItemsSource = null;
-						CompatibleDevicesView.ItemsSource = compatible;
-						AvailableDevicesView.ItemsSource = null;
-						AvailableDevicesView.ItemsSource = available;
+						var currentItems = AvailableDevicesView.ItemsSource;
+					AvailableDevicesView.ItemsSource = null;
+					AvailableDevicesView.ItemsSource = currentItems;
 
 						System.Diagnostics.Debug.WriteLine($"[MainPage] Collection views refreshed");
 					}
 					else
 					{
 						System.Diagnostics.Debug.WriteLine($"[MainPage] ERROR: Failed to save device name!");
-						await DisplayAlert(
+						await DialogService.ShowErrorAsync(
 							"Save Failed",
-							"Failed to save the device name. This may be a storage issue. Please check app permissions.",
-							"OK");
+							"Failed to save the device name. This may be a storage issue.",
+							new List<string>
+							{
+								"Check app permissions in Settings",
+								"Try restarting the app",
+								"Contact support if issue persists"
+							});
 					}
 				}
 				else
@@ -778,11 +1495,16 @@ public partial class MainPage : ContentPage
 			if (sender is Border border && border.BindingContext is BluetoothDevice device)
 			{
 				var deviceName = DeviceNameManager.GetDisplayName(device.Address, device.Name);
-				var confirmed = await DisplayAlert(
+				var confirmed = await DialogService.ShowConfirmationAsync(
 					"Forget Device",
-					$"Are you sure you want to forget \"{deviceName}\"?\n\nThis will:\n• Remove custom name\n• Unpair the device from your phone",
-					"Forget",
-					"Cancel");
+					$"Are you sure you want to forget \"{deviceName}\"?",
+					confirmText: "Forget",
+					cancelText: "Cancel",
+					bulletPoints: new List<string>
+					{
+						"Remove custom name",
+						"Unpair the device from your phone"
+					});
 
 				if (confirmed)
 				{
@@ -796,11 +1518,9 @@ public partial class MainPage : ContentPage
 
 					// Refresh device list
 					_availableDevices.Remove(device);
-					var (compatible, available) = Services.DeviceConnectionHistory.SplitDeviceList(_availableDevices);
-					CompatibleDevicesView.ItemsSource = null;
-					CompatibleDevicesView.ItemsSource = compatible;
+					var currentItems = AvailableDevicesView.ItemsSource;
 					AvailableDevicesView.ItemsSource = null;
-					AvailableDevicesView.ItemsSource = available;
+					AvailableDevicesView.ItemsSource = currentItems;
 
 					System.Diagnostics.Debug.WriteLine($"[MainPage] Device forgotten: {deviceName}");
 				}
@@ -857,8 +1577,10 @@ public partial class MainPage : ContentPage
 		_ = AnimateDots(_dotsAnimationCts.Token);
 	}
 
-	private void StopScanningAnimations()
+	private async Task StopScanningAnimationsAsync()
 	{
+		System.Diagnostics.Debug.WriteLine("[MainPage] StopScanningAnimationsAsync called");
+
 		// Cancel magnifying glass animation
 		_magnifyingGlassAnimationCts?.Cancel();
 		_magnifyingGlassAnimationCts?.Dispose();
@@ -869,14 +1591,28 @@ public partial class MainPage : ContentPage
 		_dotsAnimationCts?.Dispose();
 		_dotsAnimationCts = null;
 
-		// Reset to original state
-		MainThread.BeginInvokeOnMainThread(() =>
+		// Reset to original state - ensure it runs on UI thread and completes
+		try
 		{
-			ScanButtonText.Text = "Scan for Devices";
-			DotsLabel.Text = "";
-			MagnifyingGlass.TranslationX = 0;
-			MagnifyingGlass.TranslationY = 0;
-		});
+			await MainThread.InvokeOnMainThreadAsync(() =>
+			{
+				ScanButtonText.Text = "Scan for Devices";
+				DotsLabel.Text = "";
+				MagnifyingGlass.TranslationX = 0;
+				MagnifyingGlass.TranslationY = 0;
+				System.Diagnostics.Debug.WriteLine("[MainPage] Scan button text reset to: " + ScanButtonText.Text);
+			});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Error stopping animations: {ex.Message}");
+		}
+	}
+
+	private void StopScanningAnimations()
+	{
+		// Sync wrapper for compatibility
+		_ = StopScanningAnimationsAsync();
 	}
 
 	private async Task AnimateMagnifyingGlass(CancellationToken cancellationToken)
@@ -930,19 +1666,17 @@ public partial class MainPage : ContentPage
 				string dots = new string('.', dotCount);
 				MainThread.BeginInvokeOnMainThread(() =>
 				{
-					// Keep base text constant, only change dots
 					DotsLabel.Text = dots;
 				});
 
-				dotCount++;
-				if (dotCount > 3) dotCount = 1;
-
 				await Task.Delay(500, cancellationToken);
+
+				dotCount = (dotCount % 3) + 1; // Cycle: 1 → 2 → 3 → 1
 			}
 		}
 		catch (TaskCanceledException)
 		{
-			// Animation cancelled, reset dots
+			// Animation cancelled, clear dots
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
 				DotsLabel.Text = "";

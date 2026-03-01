@@ -6,6 +6,7 @@ namespace BluetoothMicrophoneApp.UI;
 public static class DialogService
 {
     private static SimpleCustomDialog? _currentDialog;
+    private static TextInputDialog? _currentTextInputDialog;
     private static Grid? _rootGrid;
 
     /// <summary>
@@ -142,7 +143,13 @@ public static class DialogService
     {
         if (_rootGrid == null)
         {
-            throw new InvalidOperationException("DialogService not initialized. Call Initialize() first.");
+            // Fallback to system DisplayAlert if not initialized
+            System.Diagnostics.Debug.WriteLine("[DialogService] Not initialized, using system DisplayAlert");
+            return await Application.Current.MainPage.DisplayAlert(
+                title,
+                message + (bulletPoints != null && bulletPoints.Any() ? "\n\n• " + string.Join("\n• ", bulletPoints) : ""),
+                primaryButtonText,
+                secondaryButtonText);
         }
 
         System.Diagnostics.Debug.WriteLine("[DialogService] ShowCustomDialogAsync called");
@@ -260,5 +267,84 @@ public static class DialogService
             title: "Disconnected",
             message: "Device disconnected successfully."
         );
+    }
+
+    /// <summary>
+    /// Show text input dialog with Neon-Space design
+    /// </summary>
+    public static async Task<string?> ShowTextInputAsync(
+        string title,
+        string message,
+        string? icon = null,
+        string? placeholder = null,
+        string? initialValue = null,
+        int? maxLength = null,
+        Keyboard? keyboard = null)
+    {
+        if (_rootGrid == null)
+        {
+            // Fallback to system DisplayPromptAsync if not initialized
+            System.Diagnostics.Debug.WriteLine("[DialogService] Not initialized, using system DisplayPromptAsync");
+            return await Application.Current.MainPage.DisplayPromptAsync(
+                title,
+                message,
+                placeholder: placeholder,
+                initialValue: initialValue,
+                maxLength: maxLength ?? 100,
+                keyboard: keyboard ?? Keyboard.Default);
+        }
+
+        System.Diagnostics.Debug.WriteLine("[DialogService] ShowTextInputAsync called");
+
+        try
+        {
+            // Must be called on UI thread
+            return await MainThread.InvokeOnMainThreadAsync(async () =>
+            {
+                // Close any existing text input dialog
+                if (_currentTextInputDialog != null)
+                {
+                    System.Diagnostics.Debug.WriteLine("[DialogService] Removing existing text input dialog");
+                    _rootGrid.Children.Remove(_currentTextInputDialog);
+                    _currentTextInputDialog = null;
+                    await Task.Delay(50); // Brief delay to let old dialog cleanup
+                }
+
+                // Create new text input dialog
+                System.Diagnostics.Debug.WriteLine("[DialogService] Creating new TextInputDialog");
+                _currentTextInputDialog = new TextInputDialog();
+
+                // Add to root grid (will overlay everything)
+                System.Diagnostics.Debug.WriteLine($"[DialogService] Adding text input dialog to RootGrid (grid has {_rootGrid.Children.Count} children)");
+                _rootGrid.Children.Add(_currentTextInputDialog);
+                System.Diagnostics.Debug.WriteLine($"[DialogService] Text input dialog added, grid now has {_rootGrid.Children.Count} children");
+
+                // Show dialog and wait for result
+                System.Diagnostics.Debug.WriteLine("[DialogService] Calling TextInputDialog.ShowAsync");
+                var result = await _currentTextInputDialog.ShowAsync(
+                    title: title,
+                    message: message,
+                    icon: icon,
+                    placeholder: placeholder,
+                    initialValue: initialValue,
+                    maxLength: maxLength,
+                    keyboard: keyboard
+                );
+
+                System.Diagnostics.Debug.WriteLine($"[DialogService] Text input dialog closed with result: {result}");
+
+                // Clean up
+                _rootGrid.Children.Remove(_currentTextInputDialog);
+                _currentTextInputDialog = null;
+
+                return result;
+            });
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[DialogService] ERROR: {ex.Message}");
+            System.Diagnostics.Debug.WriteLine($"[DialogService] Stack: {ex.StackTrace}");
+            throw;
+        }
     }
 }

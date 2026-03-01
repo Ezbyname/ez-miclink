@@ -1,4 +1,5 @@
 using BluetoothMicrophoneApp.Services;
+using BluetoothMicrophoneApp.UI;
 
 namespace BluetoothMicrophoneApp.Pages;
 
@@ -10,6 +11,9 @@ public partial class LoginPage : ContentPage
 	{
 		InitializeComponent();
 		_authService = authService;
+
+		// Initialize DialogService with root grid for custom dialogs
+		DialogService.Initialize(RootGrid);
 	}
 
 	private async void OnPhoneLoginClicked(object? sender, EventArgs e)
@@ -19,9 +23,10 @@ public partial class LoginPage : ContentPage
 		try
 		{
 			// Show phone number input dialog
-			var phoneNumber = await DisplayPromptAsync(
-				"Phone Login",
-				"Enter your phone number:",
+			var phoneNumber = await DialogService.ShowTextInputAsync(
+				title: "Phone Login",
+				message: "Enter your phone number:",
+				icon: "📱",
 				placeholder: "+1234567890",
 				keyboard: Keyboard.Telephone);
 
@@ -37,9 +42,10 @@ public partial class LoginPage : ContentPage
 			if (codeSent)
 			{
 				// Show verification code input dialog
-				var code = await DisplayPromptAsync(
-					"Verification Code",
-					$"Enter the 6-digit code sent to {phoneNumber}:",
+				var code = await DialogService.ShowTextInputAsync(
+					title: "Verification Code",
+					message: $"Enter the 6-digit code sent to {phoneNumber}:",
+					icon: "🔐",
 					placeholder: "123456",
 					maxLength: 6,
 					keyboard: Keyboard.Numeric);
@@ -54,19 +60,19 @@ public partial class LoginPage : ContentPage
 					}
 					else
 					{
-						await DisplayAlert("Error", "Invalid verification code. Please try again.", "OK");
+						await DialogService.ShowErrorAsync("Error", "Invalid verification code. Please try again.");
 					}
 				}
 			}
 			else
 			{
-				await DisplayAlert("Error", "Failed to send verification code. Please try again.", "OK");
+				await DialogService.ShowErrorAsync("Error", "Failed to send verification code. Please try again.");
 			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[LoginPage] Phone login error: {ex.Message}");
-			await DisplayAlert("Error", $"Login failed: {ex.Message}", "OK");
+			await DialogService.ShowErrorAsync("Error", $"Login failed: {ex.Message}");
 		}
 		finally
 		{
@@ -92,13 +98,13 @@ public partial class LoginPage : ContentPage
 			}
 			else
 			{
-				await DisplayAlert("Error", "Google login failed. Please try again.", "OK");
+				await DialogService.ShowErrorAsync("Error", "Google login failed. Please try again.");
 			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[LoginPage] Google login error: {ex.Message}");
-			await DisplayAlert("Error", $"Login failed: {ex.Message}", "OK");
+			await DialogService.ShowErrorAsync("Error", $"Login failed: {ex.Message}");
 		}
 		finally
 		{
@@ -124,13 +130,13 @@ public partial class LoginPage : ContentPage
 			}
 			else
 			{
-				await DisplayAlert("Error", "Apple login failed. Please try again.", "OK");
+				await DialogService.ShowErrorAsync("Error", "Apple login failed. Please try again.");
 			}
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[LoginPage] Apple login error: {ex.Message}");
-			await DisplayAlert("Error", $"Login failed: {ex.Message}", "OK");
+			await DialogService.ShowErrorAsync("Error", $"Login failed: {ex.Message}");
 		}
 		finally
 		{
@@ -155,7 +161,7 @@ public partial class LoginPage : ContentPage
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[LoginPage] Guest login error: {ex.Message}");
-			await DisplayAlert("Error", $"Login failed: {ex.Message}", "OK");
+			await DialogService.ShowErrorAsync("Error", $"Login failed: {ex.Message}");
 		}
 		finally
 		{

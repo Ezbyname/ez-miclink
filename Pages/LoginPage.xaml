@@ -12,7 +12,9 @@
 		</LinearGradientBrush>
 	</ContentPage.Background>
 
-	<ScrollView>
+	<!-- Root Grid for dialog overlay support -->
+	<Grid x:Name="RootGrid">
+		<ScrollView>
 		<VerticalStackLayout Spacing="20" Padding="30" VerticalOptions="Center">
 
 			<!-- Logo/Title -->
@@ -193,4 +195,5 @@
 
 		</VerticalStackLayout>
 	</ScrollView>
+	</Grid>
 </ContentPage>

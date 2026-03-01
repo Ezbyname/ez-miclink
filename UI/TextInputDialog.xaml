@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             x:Class="BluetoothMicrophoneApp.UI.SimpleCustomDialog"
+             x:Class="BluetoothMicrophoneApp.UI.TextInputDialog"
              x:Name="DialogRoot"
              HorizontalOptions="Fill"
              VerticalOptions="Fill"
@@ -17,19 +17,21 @@
             <TapGestureRecognizer Tapped="OnOverlayTapped" />
         </Grid.GestureRecognizers>
 
-        <!-- Dialog Container - Neon-Space glass card with neon gradient border -->
-        <Border x:Name="DialogBorder"
-                Margin="24,0"
-                Padding="0"
-                VerticalOptions="Center"
-                HorizontalOptions="Fill"
-                MaximumWidthRequest="400"
-                Opacity="0"
-                Scale="0.9"
-                InputTransparent="False">
+        <!-- ScrollView for keyboard avoidance -->
+        <ScrollView VerticalOptions="Center">
+            <!-- Dialog Container - Neon-Space glass card with neon gradient border -->
+            <Border x:Name="DialogBorder"
+                    Margin="24,40"
+                    Padding="0"
+                    VerticalOptions="Center"
+                    HorizontalOptions="Fill"
+                    MaximumWidthRequest="400"
+                    Opacity="0"
+                    Scale="0.9"
+                    InputTransparent="False">
 
-            <Border.Background>
-                <SolidColorBrush Color="#33FFFFFF" />
+                <Border.Background>
+                    <SolidColorBrush Color="#33FFFFFF" />
             </Border.Background>
 
             <Border.Stroke>
@@ -83,7 +85,7 @@
                         </Border.Shadow>
 
                         <Label x:Name="IconLabel"
-                               Text="ℹ️"
+                               Text="✏️"
                                FontSize="28"
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
@@ -92,7 +94,7 @@
                     <!-- Title - Neon-Space typography -->
                     <Label Grid.Column="1"
                            x:Name="TitleLabel"
-                           Text="Dialog Title"
+                           Text="Input"
                            TextColor="White"
                            FontFamily="Inter"
                            FontSize="20"
@@ -101,37 +103,72 @@
                 </Grid>
 
                 <!-- Content - Neon-Space typography -->
-                <ScrollView MaximumHeightRequest="400">
-                    <VerticalStackLayout Padding="24,16" Spacing="16">
+                <VerticalStackLayout Padding="24,20" Spacing="20">
 
-                        <!-- Message -->
-                        <Label x:Name="MessageLabel"
-                               Text="Dialog message"
+                    <!-- Message -->
+                    <Label x:Name="MessageLabel"
+                           Text="Enter text:"
+                           TextColor="White"
+                           Opacity="0.8"
+                           FontFamily="Inter"
+                           FontSize="15"
+                           LineHeight="1.4" />
+
+                    <!-- Text Input Field - Neon-Space styling -->
+                    <Border StrokeThickness="1"
+                            BackgroundColor="#33000000"
+                            Padding="16,12">
+                        <Border.Stroke>
+                            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                                <GradientStop Color="#00D2FF" Offset="0.0" />
+                                <GradientStop Color="#8B5CF6" Offset="1.0" />
+                            </LinearGradientBrush>
+                        </Border.Stroke>
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="16" />
+                        </Border.StrokeShape>
+
+                        <Entry x:Name="InputEntry"
                                TextColor="White"
-                               Opacity="0.8"
+                               PlaceholderColor="#4D00D2FF"
                                FontFamily="Inter"
-                               FontSize="15"
-                               LineHeight="1.4"
-                               HorizontalOptions="Center"
-                               HorizontalTextAlignment="Center" />
+                               FontSize="16"
+                               BackgroundColor="Transparent"
+                               Completed="OnInputCompleted" />
+                    </Border>
 
-                        <!-- Bullet Points -->
-                        <VerticalStackLayout x:Name="BulletPointsContainer"
-                                           Spacing="8"
-                                           IsVisible="False" />
-
-                    </VerticalStackLayout>
-                </ScrollView>
+                </VerticalStackLayout>
 
                 <!-- Buttons - Neon-Space button styling -->
-                <Grid x:Name="ButtonContainer"
-                      ColumnDefinitions="*"
+                <Grid ColumnDefinitions="*,*"
                       ColumnSpacing="16"
                       Padding="24"
                       BackgroundColor="#1A000000">
 
-                    <!-- Primary Button - Neon gradient -->
+                    <!-- Cancel Button - Glass with neon border -->
                     <Border Grid.Column="0"
+                            StrokeThickness="1"
+                            Stroke="#00D2FF"
+                            BackgroundColor="Transparent"
+                            HeightRequest="52"
+                            InputTransparent="False">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="20" />
+                        </Border.StrokeShape>
+
+                        <Button x:Name="CancelButton"
+                                Text="Cancel"
+                                Clicked="OnCancelButtonClicked"
+                                BackgroundColor="Transparent"
+                                TextColor="#00D2FF"
+                                FontFamily="Inter"
+                                FontSize="16"
+                                FontAttributes="Bold"
+                                VerticalOptions="Center" />
+                    </Border>
+
+                    <!-- OK Button - Neon gradient -->
+                    <Border Grid.Column="1"
                             StrokeThickness="0"
                             BackgroundColor="Transparent"
                             HeightRequest="52"
@@ -152,35 +189,11 @@
                                     Opacity="0.4" />
                         </Border.Shadow>
 
-                        <Button x:Name="PrimaryButton"
+                        <Button x:Name="OkButton"
                                 Text="OK"
-                                Clicked="OnPrimaryButtonClicked"
+                                Clicked="OnOkButtonClicked"
                                 BackgroundColor="Transparent"
                                 TextColor="White"
-                                FontFamily="Inter"
-                                FontSize="16"
-                                FontAttributes="Bold"
-                                VerticalOptions="Center" />
-                    </Border>
-
-                    <!-- Secondary Button - Glass with neon border -->
-                    <Border x:Name="SecondaryButtonBorder"
-                            Grid.Column="1"
-                            StrokeThickness="1"
-                            Stroke="#00D2FF"
-                            BackgroundColor="Transparent"
-                            HeightRequest="52"
-                            IsVisible="False"
-                            InputTransparent="False">
-                        <Border.StrokeShape>
-                            <RoundRectangle CornerRadius="20" />
-                        </Border.StrokeShape>
-
-                        <Button x:Name="SecondaryButton"
-                                Text="Cancel"
-                                Clicked="OnSecondaryButtonClicked"
-                                BackgroundColor="Transparent"
-                                TextColor="#00D2FF"
                                 FontFamily="Inter"
                                 FontSize="16"
                                 FontAttributes="Bold"
@@ -191,6 +204,7 @@
 
             </VerticalStackLayout>
         </Border>
+        </ScrollView>
 
     </Grid>
 </ContentView>
