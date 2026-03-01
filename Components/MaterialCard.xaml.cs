@@ -1,4 +1,5 @@
-using BluetoothMicrophoneApp.Themes;
+// TODO: Uncomment when Themes namespace is implemented
+// using BluetoothMicrophoneApp.Themes;
 
 namespace BluetoothMicrophoneApp.Components;
 
@@ -17,7 +18,7 @@ public partial class MaterialCard : Border
         BindableProperty.Create(nameof(IsClickable), typeof(bool), typeof(MaterialCard), false, propertyChanged: OnClickableChanged);
 
     public static readonly BindableProperty CornerRadiusValueProperty =
-        BindableProperty.Create(nameof(CornerRadiusValue), typeof(double), typeof(MaterialCard), MaterialRadius.ExtraLarge);
+        BindableProperty.Create(nameof(CornerRadiusValue), typeof(double), typeof(MaterialCard), 28.0); // MaterialRadius.ExtraLarge
 
     public int ElevationLevel
     {
@@ -67,8 +68,12 @@ public partial class MaterialCard : Border
 
     private void ApplyElevation(int level)
     {
-        var shadowOpacity = MaterialElevation.GetShadowOpacity(level);
-        var shadowRadius = MaterialElevation.GetShadowRadius(level);
+        // TODO: Uncomment when MaterialElevation is implemented
+        // var shadowOpacity = MaterialElevation.GetShadowOpacity(level);
+        // var shadowRadius = MaterialElevation.GetShadowRadius(level);
+
+        var shadowOpacity = level * 0.15;
+        var shadowRadius = level * 4.0;
 
         if (Shadow != null)
         {
@@ -86,7 +91,7 @@ public partial class MaterialCard : Border
 
         // Intensify glow
         var originalStroke = Stroke;
-        Stroke = new SolidColorBrush(MaterialColors.Primary.WithAlpha(0.5f));
+        Stroke = new SolidColorBrush(Colors.Blue.WithAlpha(0.5f)); // MaterialColors.Primary
 
         await Task.Delay(100);
 
@@ -103,10 +108,14 @@ public partial class MaterialCard : Border
     /// </summary>
     public void SetAccentColor(Color accentColor)
     {
-        Stroke = new SolidColorBrush(MaterialColors.GetBorderColor(accentColor));
+        // TODO: Uncomment when MaterialColors is implemented
+        // Stroke = new SolidColorBrush(MaterialColors.GetBorderColor(accentColor));
+        // Shadow.Brush = new SolidColorBrush(MaterialColors.GetGlowColor(accentColor));
+
+        Stroke = new SolidColorBrush(accentColor);
         if (Shadow != null)
         {
-            Shadow.Brush = new SolidColorBrush(MaterialColors.GetGlowColor(accentColor));
+            Shadow.Brush = new SolidColorBrush(accentColor.WithAlpha(0.4f));
         }
     }
 }

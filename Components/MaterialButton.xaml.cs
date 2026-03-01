@@ -1,4 +1,5 @@
-using BluetoothMicrophoneApp.Themes;
+// TODO: Uncomment when Themes namespace is implemented
+// using BluetoothMicrophoneApp.Themes;
 
 namespace BluetoothMicrophoneApp.Components;
 
@@ -28,7 +29,7 @@ public partial class MaterialButton : Border
         BindableProperty.Create(nameof(IsEnabledButton), typeof(bool), typeof(MaterialButton), true, propertyChanged: OnEnabledChanged);
 
     public static readonly BindableProperty AccentColorProperty =
-        BindableProperty.Create(nameof(AccentColor), typeof(Color), typeof(MaterialButton), MaterialColors.Primary);
+        BindableProperty.Create(nameof(AccentColor), typeof(Color), typeof(MaterialButton), Colors.Blue); // MaterialColors.Primary
 
     public string Text
     {
@@ -108,12 +109,12 @@ public partial class MaterialButton : Border
                 BackgroundColor = AccentColor;
                 Stroke = Colors.Transparent;
                 StrokeThickness = 0;
-                ButtonLabel.TextColor = MaterialColors.OnPrimary;
+                ButtonLabel.TextColor = Colors.White; // MaterialColors.OnPrimary
                 break;
 
             case ButtonVariant.FilledTonal:
                 // Secondary filled button with subtle background
-                BackgroundColor = MaterialColors.GetContainerColor(AccentColor);
+                BackgroundColor = AccentColor.WithAlpha(0.2f); // MaterialColors.GetContainerColor(AccentColor)
                 Stroke = Colors.Transparent;
                 StrokeThickness = 0;
                 ButtonLabel.TextColor = AccentColor;
@@ -122,7 +123,7 @@ public partial class MaterialButton : Border
             case ButtonVariant.Outlined:
                 // Outlined button
                 BackgroundColor = Colors.Transparent;
-                Stroke = new SolidColorBrush(MaterialColors.GetBorderColor(AccentColor));
+                Stroke = new SolidColorBrush(AccentColor); // MaterialColors.GetBorderColor(AccentColor)
                 StrokeThickness = 1;
                 ButtonLabel.TextColor = AccentColor;
                 break;

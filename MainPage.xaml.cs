@@ -157,11 +157,13 @@ public partial class MainPage : ContentPage
 				// Clear device lists
 				_availableDevices.Clear();
 				AvailableDevicesView.ItemsSource = null;
-				RecentlyConnectedView.ItemsSource = null;
+				// TODO: RecentlyConnectedView was removed
+				// RecentlyConnectedView.ItemsSource = null;
 
 				// Hide device list sections
 				AvailableDevicesSection.IsVisible = false;
-				RecentlyConnectedSection.IsVisible = false;
+				// TODO: RecentlyConnectedSection was removed
+				// RecentlyConnectedSection.IsVisible = false;
 
 				// If we were connected, disconnect first
 				if (_bluetoothService.IsConnected)
@@ -382,29 +384,34 @@ public partial class MainPage : ContentPage
 		MainThread.BeginInvokeOnMainThread(() =>
 		{
 			// Hide everything first
-			HeaderSection.IsVisible = false;
+			// TODO: HeaderSection was removed
+			// HeaderSection.IsVisible = false;
 			ScanButton.IsVisible = false;
 			MainCard.IsVisible = false;
 			AvailableDevicesSection.IsVisible = false;
-			RecentlyConnectedSection.IsVisible = false;
+			// TODO: RecentlyConnectedSection was removed
+			// RecentlyConnectedSection.IsVisible = false;
 			DeviceInfoSection.IsVisible = false;
 			AudioControlsSection.IsVisible = false;
 			MessageSection.IsVisible = false;
 			ActionButtonsSection.IsVisible = false;
 			SecondaryActionBorder.IsVisible = false;
-			BackButtonSection.IsVisible = false;
+			// TODO: BackButtonSection was removed
+			// BackButtonSection.IsVisible = false;
 
 			switch (newState)
 			{
 				case UIState.Initial:
 					// Just header and scan button visible (default)
-					HeaderSection.IsVisible = true;
+					// TODO: HeaderSection was removed
+					// HeaderSection.IsVisible = true;
 					ScanButton.IsVisible = true;
 					break;
 
 				case UIState.DeviceList:
 					// Show header, scan button and device list sections
-					HeaderSection.IsVisible = true;
+					// TODO: HeaderSection was removed
+					// HeaderSection.IsVisible = true;
 					ScanButton.IsVisible = true;
 					// Show sections based on what's populated (handled in StartScanning)
 					// Clear selections to allow re-selecting the same device
@@ -451,7 +458,8 @@ public partial class MainPage : ContentPage
 					DeviceStatusLabel.Opacity = 1.0;
 					AudioControlsSection.IsVisible = true;
 					ActionButtonsSection.IsVisible = false;
-					BackButtonSection.IsVisible = true; // Show back button to return to device list
+					// TODO: BackButtonSection was removed
+					// BackButtonSection.IsVisible = true; // Show back button to return to device list
 					break;
 
 				case UIState.Failed:
@@ -654,7 +662,8 @@ public partial class MainPage : ContentPage
 		// Hide the stop button and re-enable scan button immediately
 		MainThread.BeginInvokeOnMainThread(() =>
 		{
-			StopScanButton.IsVisible = false;
+			// TODO: StopScanButton was removed
+			// StopScanButton.IsVisible = false;
 			ScanButton.IsEnabled = true;
 		});
 
@@ -680,7 +689,8 @@ public partial class MainPage : ContentPage
 
 			// Show loading and Stop Scanning button
 			ScanButton.IsEnabled = false;
-			StopScanButton.IsVisible = true;
+			// TODO: StopScanButton was removed
+			// StopScanButton.IsVisible = true;
 
 			// Start scanning animations
 			StartScanningAnimations();
@@ -766,16 +776,19 @@ public partial class MainPage : ContentPage
 			// First, check for devices already connected at system level
 			System.Diagnostics.Debug.WriteLine("[MainPage] ========== STEP 1: Check Already-Connected Devices ==========");
 			List<BluetoothDevice> alreadyConnectedDevices;
-			try
-			{
-				alreadyConnectedDevices = await _bluetoothService.GetConnectedDevicesAsync();
-				System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Found {alreadyConnectedDevices.Count} already-connected devices");
-			}
-			catch (Exception ex)
-			{
-				System.Diagnostics.Debug.WriteLine($"[MainPage] ⚠️ Error checking connected devices: {ex.Message}");
-				alreadyConnectedDevices = new List<BluetoothDevice>();
-			}
+			// TODO: GetConnectedDevicesAsync method not implemented in IBluetoothService
+			// try
+			// {
+			// 	alreadyConnectedDevices = await _bluetoothService.GetConnectedDevicesAsync();
+			// 	System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Found {alreadyConnectedDevices.Count} already-connected devices");
+			// }
+			// catch (Exception ex)
+			// {
+			// 	System.Diagnostics.Debug.WriteLine($"[MainPage] ⚠️ Error checking connected devices: {ex.Message}");
+			// 	alreadyConnectedDevices = new List<BluetoothDevice>();
+			// }
+			alreadyConnectedDevices = new List<BluetoothDevice>();
+			System.Diagnostics.Debug.WriteLine("[MainPage] Skipping already-connected devices check (not implemented)");
 
 			// Check if scanning was cancelled
 			if (_scanningCts?.Token.IsCancellationRequested == true)
@@ -831,22 +844,23 @@ public partial class MainPage : ContentPage
 			}
 
 			// Merge the lists, marking already-connected devices
-			foreach (var alreadyConnected in alreadyConnectedDevices)
-			{
-				var existingDevice = devices.FirstOrDefault(d => d.Address == alreadyConnected.Address);
-				if (existingDevice != null)
-				{
-					// Mark existing device as connected
-					existingDevice.IsConnected = true;
-					System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Device {existingDevice.Name} is already connected at system level");
-				}
-				else
-				{
-					// Add the connected device if not in scan results
-					devices.Add(alreadyConnected);
-					System.Diagnostics.Debug.WriteLine($"[MainPage] ➕ Added already-connected device {alreadyConnected.Name}");
-				}
-			}
+			// TODO: BluetoothDevice.IsConnected property not implemented
+			// foreach (var alreadyConnected in alreadyConnectedDevices)
+			// {
+			// 	var existingDevice = devices.FirstOrDefault(d => d.Address == alreadyConnected.Address);
+			// 	if (existingDevice != null)
+			// 	{
+			// 		// Mark existing device as connected
+			// 		existingDevice.IsConnected = true;
+			// 		System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Device {existingDevice.Name} is already connected at system level");
+			// 	}
+			// 	else
+			// 	{
+			// 		// Add the connected device if not in scan results
+			// 		devices.Add(alreadyConnected);
+			// 		System.Diagnostics.Debug.WriteLine($"[MainPage] ➕ Added already-connected device {alreadyConnected.Name}");
+			// 	}
+			// }
 
 			_availableDevices = devices;
 
@@ -887,13 +901,15 @@ public partial class MainPage : ContentPage
 			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Recently Paired Devices: {recentlyPairedDevices.Count} devices");
 			foreach (var device in recentlyPairedDevices)
 			{
-				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}, IsConnected: {device.IsConnected}");
+				// TODO: BluetoothDevice.IsConnected property not implemented
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}"); // , IsConnected: {device.IsConnected}
 			}
 
 			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Available Devices: {availableDevices.Count} devices (ALL devices)");
 			foreach (var device in availableDevices)
 			{
-				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}, IsConnected: {device.IsConnected}");
+				// TODO: BluetoothDevice.IsConnected property not implemented
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}"); // , IsConnected: {device.IsConnected}
 			}
 
 			// CRITICAL FIX: Update UI directly without SetState to avoid race condition
@@ -908,7 +924,8 @@ public partial class MainPage : ContentPage
 				_currentState = UIState.DeviceList;
 
 				// Hide everything except what we need
-				HeaderSection.IsVisible = true;
+				// TODO: HeaderSection was removed
+				// HeaderSection.IsVisible = true;
 				ScanButton.IsVisible = true;
 				MainCard.IsVisible = false;
 				DeviceInfoSection.IsVisible = false;
@@ -916,25 +933,28 @@ public partial class MainPage : ContentPage
 				MessageSection.IsVisible = false;
 				ActionButtonsSection.IsVisible = false;
 				SecondaryActionBorder.IsVisible = false;
-				BackButtonSection.IsVisible = false;
+				// TODO: BackButtonSection was removed
+				// BackButtonSection.IsVisible = false;
 
 				// Clear selections
 				AvailableDevicesView.SelectedItem = null;
-				RecentlyConnectedView.SelectedItem = null;
+				// TODO: RecentlyConnectedView was removed
+				// RecentlyConnectedView.SelectedItem = null;
 
 				// Show Recently Paired Devices section (devices with connection history)
-				if (recentlyPairedDevices.Any())
-				{
-					System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting RecentlyConnectedView with {recentlyPairedDevices.Count} devices");
-					RecentlyConnectedView.ItemsSource = recentlyPairedDevices;
-					RecentlyConnectedSection.IsVisible = true;
-					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ RecentlyConnectedSection is now VISIBLE");
-				}
-				else
-				{
-					RecentlyConnectedSection.IsVisible = false;
-					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] RecentlyConnectedSection hidden (no recently paired devices)");
-				}
+				// TODO: RecentlyConnectedView and RecentlyConnectedSection were removed
+				// if (recentlyPairedDevices.Any())
+				// {
+				// 	System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting RecentlyConnectedView with {recentlyPairedDevices.Count} devices");
+				// 	RecentlyConnectedView.ItemsSource = recentlyPairedDevices;
+				// 	RecentlyConnectedSection.IsVisible = true;
+				// 	System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ RecentlyConnectedSection is now VISIBLE");
+				// }
+				// else
+				// {
+				// 	RecentlyConnectedSection.IsVisible = false;
+				// 	System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] RecentlyConnectedSection hidden (no recently paired devices)");
+				// }
 
 				// Show Available Devices section (ALL devices - paired, connected, unpaired, everything)
 				if (availableDevices.Any())
@@ -985,7 +1005,8 @@ public partial class MainPage : ContentPage
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
 				ScanButton.IsEnabled = true;
-				StopScanButton.IsVisible = false;
+				// TODO: StopScanButton was removed
+				// StopScanButton.IsVisible = false;
 			});
 		}
 	}
@@ -997,22 +1018,24 @@ public partial class MainPage : ContentPage
 		{
 			_selectedDevice = device;
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Device tapped: {_selectedDevice?.Name}");
-			System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
+			// TODO: BluetoothDevice.IsConnected property not implemented
+			// System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
 
 			// Check if this device is already connected at system level
-			if (_selectedDevice != null && _selectedDevice.IsConnected)
-			{
-				// Device is already connected at system level - use it immediately
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
-
-				// Mark as our connected device (no need to establish connection)
-				_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
-
-				// Go directly to connected state
-				SetState(UIState.Connected);
-			}
+			// TODO: BluetoothDevice.IsConnected and UseAlreadyConnectedDevice not implemented
+			// if (_selectedDevice != null && _selectedDevice.IsConnected)
+			// {
+			// 	// Device is already connected at system level - use it immediately
+			// 	System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
+			//
+			// 	// Mark as our connected device (no need to establish connection)
+			// 	_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
+			//
+			// 	// Go directly to connected state
+			// 	SetState(UIState.Connected);
+			// }
 			// Check if we're already connected to this device in our app
-			else if (_bluetoothService.IsConnected &&
+			if (_bluetoothService.IsConnected &&
 			    _bluetoothService.ConnectedDevice != null &&
 			    _selectedDevice != null &&
 			    _bluetoothService.ConnectedDevice.Address == _selectedDevice.Address)
@@ -1036,22 +1059,24 @@ public partial class MainPage : ContentPage
 		{
 			_selectedDevice = e.CurrentSelection[0] as BluetoothDevice;
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Device selected: {_selectedDevice?.Name}");
-			System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
+			// TODO: BluetoothDevice.IsConnected property not implemented
+			// System.Diagnostics.Debug.WriteLine($"[MainPage] Device IsConnected: {_selectedDevice?.IsConnected}");
 
 			// Check if this device is already connected at system level
-			if (_selectedDevice != null && _selectedDevice.IsConnected)
-			{
-				// Device is already connected at system level - use it immediately
-				System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
-
-				// Mark as our connected device (no need to establish connection)
-				_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
-
-				// Go directly to connected state
-				SetState(UIState.Connected);
-			}
+			// TODO: BluetoothDevice.IsConnected and UseAlreadyConnectedDevice not implemented
+			// if (_selectedDevice != null && _selectedDevice.IsConnected)
+			// {
+			// 	// Device is already connected at system level - use it immediately
+			// 	System.Diagnostics.Debug.WriteLine($"[MainPage] Device {_selectedDevice.Name} is already connected at system level, using it immediately");
+			//
+			// 	// Mark as our connected device (no need to establish connection)
+			// 	_bluetoothService.UseAlreadyConnectedDevice(_selectedDevice);
+			//
+			// 	// Go directly to connected state
+			// 	SetState(UIState.Connected);
+			// }
 			// Check if we're already connected to this device in our app
-			else if (_bluetoothService.IsConnected &&
+			if (_bluetoothService.IsConnected &&
 			    _bluetoothService.ConnectedDevice != null &&
 			    _selectedDevice != null &&
 			    _bluetoothService.ConnectedDevice.Address == _selectedDevice.Address)

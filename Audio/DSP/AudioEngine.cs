@@ -56,7 +56,8 @@ public class AudioEngine
     private volatile float _masterGainValue = 1.0f; // LOCK-FREE: Atomic read/write
 
     // Noise reduction (global effect, always present but can be bypassed)
-    private NoiseReductionEffect _noiseReduction;
+    // TODO: Implement NoiseReductionEffect
+    // private NoiseReductionEffect _noiseReduction;
     private volatile bool _noiseReductionEnabled; // LOCK-FREE: Atomic read/write
 
     public AudioEngine()
@@ -65,7 +66,8 @@ public class AudioEngine
         _currentPreset = "None";
         _isInitialized = false;
         _masterGain = new GainEffect();
-        _noiseReduction = new NoiseReductionEffect();
+        // TODO: Implement NoiseReductionEffect
+        // _noiseReduction = new NoiseReductionEffect();
         _noiseReductionEnabled = true; // Enabled by default
 
         // Initialize preset registry with refactored presets
@@ -110,7 +112,8 @@ public class AudioEngine
         _totalSamplesProcessed = 0;
         _processingStartTime = DateTime.Now;
         _masterGain.Prepare(sampleRate);
-        _noiseReduction.Prepare(sampleRate);
+        // TODO: Implement NoiseReductionEffect
+        // _noiseReduction.Prepare(sampleRate);
         _isInitialized = true;
     }
 
@@ -143,10 +146,11 @@ public class AudioEngine
 
         // Apply noise reduction SECOND (after input gain, before effects)
         // This removes background noise before it gets amplified by effects
-        if (_noiseReductionEnabled)
-        {
-            _noiseReduction.Process(buffer, offset, count);
-        }
+        // TODO: Implement NoiseReductionEffect
+        // if (_noiseReductionEnabled)
+        // {
+        //     _noiseReduction.Process(buffer, offset, count);
+        // }
 
         // Process through effect chain
         _effectChain.Process(buffer, offset, count);
@@ -251,43 +255,59 @@ public class AudioEngine
 
             case "nerdy":
             case "nerdy_voice":
-                BuildNerdyVoicePreset();
+                // TODO: Implement NerdyVoiceEffect
+                // BuildNerdyVoicePreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "squeaky_cartoon":
             case "squeaky":
-                BuildSqueakyCartoonPreset();
+                // TODO: Implement SqueakyCartoonEffect
+                // BuildSqueakyCartoonPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "dopey_giant":
             case "dopey giant":
-                BuildDopeyGiantPreset();
+                // TODO: Implement DopeyGiantEffect
+                // BuildDopeyGiantPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "squawky_bird":
             case "squawky bird":
             case "duck":
-                BuildSquawkyBirdPreset();
+                // TODO: Implement SquawkyBirdEffect
+                // BuildSquawkyBirdPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "dopey_dad":
             case "dopey dad":
-                BuildDopeyDadPreset();
+                // TODO: Implement DopeyDadEffect
+                // BuildDopeyDadPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "mouse_squeak":
             case "mouse":
-                BuildMouseSqueakPreset();
+                // TODO: Implement MouseSqueakEffect
+                // BuildMouseSqueakPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "villain":
             case "accented_villain":
-                BuildAccentedVillainPreset();
+                // TODO: Implement AccentedVillainEffect
+                // BuildAccentedVillainPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "grumpy_cat":
             case "grumpy":
-                BuildGrumpyCatPreset();
+                // TODO: Implement GrumpyCatEffect
+                // BuildGrumpyCatPreset();
+                BuildCleanPreset(); // Fallback to clean preset
                 break;
 
             case "clean":
@@ -318,7 +338,8 @@ public class AudioEngine
     public void Reset()
     {
         _effectChain.Reset();
-        _noiseReduction.Reset();
+        // TODO: Implement NoiseReductionEffect
+        // _noiseReduction.Reset();
         _totalSamplesProcessed = 0;
     }
 
@@ -363,10 +384,11 @@ public class AudioEngine
         System.Diagnostics.Debug.WriteLine($"[AudioEngine] Noise reduction {(enabled ? "ENABLED" : "DISABLED")}");
 
         // Reset noise reduction state when toggling
-        if (!enabled)
-        {
-            _noiseReduction.Reset();
-        }
+        // TODO: Implement NoiseReductionEffect
+        // if (!enabled)
+        // {
+        //     _noiseReduction.Reset();
+        // }
     }
 
     /// <summary>
@@ -956,6 +978,8 @@ public class AudioEngine
     // PREMIUM CHARACTER VOICE PRESETS
     // ============================================================================
 
+    // TODO: Implement NerdyVoiceEffect
+    /*
     private void BuildNerdyVoicePreset()
     {
         var nerdy = new NerdyVoiceEffect();
@@ -978,7 +1002,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement SqueakyCartoonEffect
+    /*
     private void BuildSqueakyCartoonPreset()
     {
         var squeaky = new SqueakyCartoonEffect();
@@ -1003,7 +1030,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement DopeyGiantEffect
+    /*
     private void BuildDopeyGiantPreset()
     {
         var dopeyGiant = new DopeyGiantEffect();
@@ -1026,7 +1056,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement SquawkyBirdEffect
+    /*
     private void BuildSquawkyBirdPreset()
     {
         var squawky = new SquawkyBirdEffect();
@@ -1051,7 +1084,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement DopeyDadEffect
+    /*
     private void BuildDopeyDadPreset()
     {
         var dopeyDad = new DopeyDadEffect();
@@ -1074,7 +1110,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement MouseSqueakEffect
+    /*
     private void BuildMouseSqueakPreset()
     {
         var mouse = new MouseSqueakEffect();
@@ -1097,7 +1136,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement AccentedVillainEffect
+    /*
     private void BuildAccentedVillainPreset()
     {
         var villain = new AccentedVillainEffect();
@@ -1121,7 +1163,10 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 
+    // TODO: Implement GrumpyCatEffect
+    /*
     private void BuildGrumpyCatPreset()
     {
         var grumpy = new GrumpyCatEffect();
@@ -1145,6 +1190,7 @@ public class AudioEngine
         });
         _effectChain.AddEffect(limiter);
     }
+    */
 }
 
 /// <summary>
