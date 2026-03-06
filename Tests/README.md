@@ -115,7 +115,7 @@ Verifies basic app functionality without requiring real Bluetooth connections.
 **Purpose:** Ensures core audio processing works correctly, authentication system is stable, and **main flows don't crash the app**.
 
 **Detailed Test Coverage:**
-See `SANITY_TEST_COVERAGE.md` for comprehensive documentation of all 17 tests, including:
+See `SANITY_TEST_COVERAGE.md` for comprehensive documentation of all 18 tests, including:
 - Detailed test descriptions
 - Why each test is critical
 - What happens if tests fail
@@ -403,7 +403,7 @@ The pre-push git hook (`.git/hooks/pre-push`) now runs **4 essential tests** aut
 
 ### Comprehensive Tests (📋 Available but Disabled)
 
-The 17 comprehensive SanityTestAgent tests exist but are currently disabled in the pre-push hook due to MAUI project structure constraints:
+The 18 comprehensive SanityTestAgent tests exist but are currently disabled in the pre-push hook due to MAUI project structure constraints:
 
 **Issue:** The Tests project needs to reference the main MAUI app, but:
 - Tests project targets `net9.0` (standard .NET)
@@ -418,14 +418,14 @@ BluetoothMicrophoneApp.Core (net9.0) ← Shared logic
     └── Models/
 
 BluetoothMicrophoneApp.Tests (net9.0) ← Tests reference Core
-    └── SanityTestAgent.cs (17 tests)
+    └── SanityTestAgent.cs (18 tests)
 
 BluetoothMicrophoneApp (MAUI) ← UI references Core
     └── Pages/
 ```
 
 **Benefits of Refactor:**
-- ✅ Enable all 17 comprehensive tests in pre-push hooks
+- ✅ Enable all 18 comprehensive tests in pre-push hooks
 - ✅ Better separation of concerns
 - ✅ Easier unit testing
 - ✅ Can run tests in CI/CD pipelines

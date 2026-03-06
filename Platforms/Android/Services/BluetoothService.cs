@@ -148,6 +148,109 @@ public class BluetoothService : IBluetoothService
         }
     }
 
+    private async Task<HashSet<string>> GetCurrentlyConnectedAddressesAsync()
+    {
+        var connected = new HashSet<string>();
+        try
+        {
+            var context = Platform.CurrentActivity;
+            if (_bluetoothAdapter == null || context == null)
+            {
+                Log("  Cannot check connected devices: adapter or context is null");
+                return connected;
+            }
+
+            // Use BluetoothAdapter.GetProfileProxy to get A2DP and Headset profile proxies
+            // This is the proper Android API for detecting classic BT connections
+            var profilesToCheck = new[] { ProfileType.A2dp, ProfileType.Headset };
+
+            foreach (var profileType in profilesToCheck)
+            {
+                try
+                {
+                    var tcs = new TaskCompletionSource<IList<global::Android.Bluetooth.BluetoothDevice>?>();
+                    var listener = new ProfileServiceListener(tcs);
+
+                    bool proxyRequested = _bluetoothAdapter.GetProfileProxy(context, listener, profileType);
+                    Log($"  GetProfileProxy({profileType}): requested={proxyRequested}");
+
+                    if (proxyRequested)
+                    {
+                        // Wait up to 3 seconds for the proxy callback
+                        var completedTask = await Task.WhenAny(tcs.Task, Task.Delay(3000));
+                        if (completedTask == tcs.Task && tcs.Task.Result != null)
+                        {
+                            foreach (var device in tcs.Task.Result)
+                            {
+                                if (device?.Address != null)
+                                {
+                                    connected.Add(device.Address);
+                                    Log($"  Connected via {profileType}: {device.Name} ({device.Address})");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            Log($"  GetProfileProxy({profileType}): timed out or no devices");
+                        }
+
+                        // Close the proxy
+                        if (listener.Profile != null)
+                        {
+                            _bluetoothAdapter.CloseProfileProxy(profileType, listener.Profile);
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"  Error checking profile {profileType}: {ex.Message}");
+                }
+            }
+
+            Log($"  Total connected devices found: {connected.Count}");
+        }
+        catch (Exception ex)
+        {
+            Log($"Error checking connected devices: {ex.Message}");
+        }
+        return connected;
+    }
+
+    /// <summary>
+    /// Service listener for BluetoothAdapter.GetProfileProxy callback.
+    /// </summary>
+    private class ProfileServiceListener : Java.Lang.Object, IBluetoothProfileServiceListener
+    {
+        private readonly TaskCompletionSource<IList<global::Android.Bluetooth.BluetoothDevice>?> _tcs;
+        public IBluetoothProfile? Profile { get; private set; }
+
+        public ProfileServiceListener(TaskCompletionSource<IList<global::Android.Bluetooth.BluetoothDevice>?> tcs)
+        {
+            _tcs = tcs;
+        }
+
+        public void OnServiceConnected(ProfileType profile, IBluetoothProfile? proxy)
+        {
+            Profile = proxy;
+            try
+            {
+                var devices = proxy?.ConnectedDevices;
+                Log($"  ProfileServiceListener.OnServiceConnected({profile}): {devices?.Count ?? 0} connected devices");
+                _tcs.TrySetResult(devices);
+            }
+            catch (Exception ex)
+            {
+                Log($"  ProfileServiceListener error: {ex.Message}");
+                _tcs.TrySetResult(null);
+            }
+        }
+
+        public void OnServiceDisconnected(ProfileType profile)
+        {
+            Log($"  ProfileServiceListener.OnServiceDisconnected({profile})");
+        }
+    }
+
     public async Task<List<AppBluetoothDevice>> ScanForDevicesAsync()
     {
         Log("=== ScanForDevicesAsync START ===");
@@ -168,9 +271,9 @@ public class BluetoothService : IBluetoothService
         try
         {
             // Step 1: Add bonded (paired) devices first
-            // These are devices that were paired before and may already be connected
-            // (Connected devices often don't respond to discovery broadcasts)
-            Log("Step 1: Adding bonded (paired) devices...");
+            // Check which are currently connected, rest wait for discovery to confirm availability
+            Log("Step 1: Checking connected devices and adding bonded devices...");
+            var connectedAddresses = await GetCurrentlyConnectedAddressesAsync();
             var bondedDevices = _bluetoothAdapter.BondedDevices;
             if (bondedDevices != null && bondedDevices.Count > 0)
             {
@@ -178,14 +281,16 @@ public class BluetoothService : IBluetoothService
                 {
                     if (device != null && !string.IsNullOrWhiteSpace(device.Address))
                     {
+                        bool isConnected = connectedAddresses.Contains(device.Address);
                         var appDevice = new AppBluetoothDevice
                         {
                             Name = device.Name ?? "Unknown Device",
                             Address = device.Address,
-                            IsPaired = true
+                            IsPaired = true,
+                            IsAvailable = isConnected
                         };
                         _discoveredDevices.Add(appDevice);
-                        Log($"  → Bonded: {appDevice.Name} ({appDevice.Address})");
+                        Log($"  → Bonded: {appDevice.Name} ({appDevice.Address}) Available: {isConnected}");
                     }
                 }
             }
@@ -549,10 +654,16 @@ public class BluetoothService : IBluetoothService
                         {
                             lock (_lock)
                             {
-                                // Check if device already in list
-                                bool exists = _devices.Any(d => d.Address == address);
+                                // Check if device already in list (e.g. bonded device)
+                                var existing = _devices.FirstOrDefault(d => d.Address == address);
 
-                                if (!exists)
+                                if (existing != null)
+                                {
+                                    // Bonded device responded to discovery - mark as available
+                                    existing.IsAvailable = true;
+                                    Log($"  → Discovered (already bonded, now available): {name} ({address})");
+                                }
+                                else
                                 {
                                     bool isPaired = device.BondState == Bond.Bonded;
 
@@ -560,7 +671,8 @@ public class BluetoothService : IBluetoothService
                                     {
                                         Name = name,
                                         Address = address,
-                                        IsPaired = isPaired
+                                        IsPaired = isPaired,
+                                        IsAvailable = true
                                     };
 
                                     _devices.Add(appDevice);

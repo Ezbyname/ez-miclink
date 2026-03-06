@@ -59,7 +59,8 @@ public class BluetoothService : IBluetoothService
             {
                 Name = peripheral.Name ?? "Unknown Device",
                 Address = peripheral.Identifier.ToString(),
-                IsPaired = peripheral.State == CBPeripheralState.Connected
+                IsPaired = peripheral.State == CBPeripheralState.Connected,
+                IsAvailable = true
             });
         }
 

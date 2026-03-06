@@ -1,7 +1,16 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:converters="clr-namespace:BluetoothMicrophoneApp.Converters"
              x:Class="BluetoothMicrophoneApp.MainPage">
+
+    <ContentPage.Resources>
+        <converters:BoolToOpacityConverter x:Key="BoolToOpacityConverter" />
+        <converters:BoolToStrokeColorConverter x:Key="BoolToStrokeColorConverter" />
+        <converters:BoolToStatusIconConverter x:Key="BoolToStatusIconConverter" />
+        <converters:BoolToTextColorConverter x:Key="BoolToTextColorConverter" />
+        <converters:BoolToAvailabilityTextConverter x:Key="BoolToAvailabilityTextConverter" />
+    </ContentPage.Resources>
 
     <ContentPage.Background>
         <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
@@ -456,98 +465,7 @@
                     </VerticalStackLayout>
                 </Border>
 
-                <!-- Compatible Devices (connected before) -->
-                <VerticalStackLayout x:Name="CompatibleDevicesSection"
-                                   Spacing="12"
-                                   IsVisible="False"
-                                   Margin="0,10,0,0">
-
-                    <Label Text="Compatible Devices"
-                           FontSize="16"
-                           FontAttributes="Bold"
-                           TextColor="#4CAF50"
-                           Margin="10,0,0,10" />
-
-                    <CollectionView x:Name="CompatibleDevicesView"
-                                  SelectionMode="Single"
-                                  SelectionChanged="OnDeviceSelected">
-                        <CollectionView.ItemTemplate>
-                            <DataTemplate>
-                                <Border BackgroundColor="#1E1E38"
-                                       Stroke="#4CAF5080"
-                                       StrokeThickness="1"
-                                       Padding="16"
-                                       Margin="0,0,0,8">
-                                    <Border.StrokeShape>
-                                        <RoundRectangle CornerRadius="12" />
-                                    </Border.StrokeShape>
-                                    <Grid ColumnDefinitions="Auto,*,Auto,Auto">
-                                        <Label Text="✅"
-                                               FontSize="28"
-                                               VerticalOptions="Center"
-                                               Margin="0,0,12,0" />
-                                        <VerticalStackLayout Grid.Column="1"
-                                                           Spacing="4"
-                                                           VerticalOptions="Center">
-                                            <Label Text="{Binding Name}"
-                                                   FontSize="16"
-                                                   FontAttributes="Bold"
-                                                   TextColor="White" />
-                                            <Label Text="{Binding Address}"
-                                                   FontSize="12"
-                                                   TextColor="#8E8E93" />
-                                        </VerticalStackLayout>
-
-                                        <!-- Edit Name Button -->
-                                        <Border Grid.Column="2"
-                                                BackgroundColor="Transparent"
-                                                Stroke="#4A90E266"
-                                                StrokeThickness="1"
-                                                WidthRequest="40"
-                                                HeightRequest="40"
-                                                VerticalOptions="Center"
-                                                Margin="0,0,8,0">
-                                            <Border.StrokeShape>
-                                                <RoundRectangle CornerRadius="20" />
-                                            </Border.StrokeShape>
-                                            <Border.GestureRecognizers>
-                                                <TapGestureRecognizer Tapped="OnEditDeviceNameClicked" />
-                                            </Border.GestureRecognizers>
-                                            <Label Text="✏️"
-                                                   FontSize="18"
-                                                   Opacity="0.7"
-                                                   HorizontalOptions="Center"
-                                                   VerticalOptions="Center" />
-                                        </Border>
-
-                                        <!-- Delete Button -->
-                                        <Border Grid.Column="3"
-                                                BackgroundColor="Transparent"
-                                                Stroke="#FB718566"
-                                                StrokeThickness="1"
-                                                WidthRequest="40"
-                                                HeightRequest="40"
-                                                VerticalOptions="Center">
-                                            <Border.StrokeShape>
-                                                <RoundRectangle CornerRadius="20" />
-                                            </Border.StrokeShape>
-                                            <Border.GestureRecognizers>
-                                                <TapGestureRecognizer Tapped="OnDeleteDeviceClicked" />
-                                            </Border.GestureRecognizers>
-                                            <Label Text="🗑️"
-                                                   FontSize="18"
-                                                   Opacity="0.7"
-                                                   HorizontalOptions="Center"
-                                                   VerticalOptions="Center" />
-                                        </Border>
-                                    </Grid>
-                                </Border>
-                            </DataTemplate>
-                        </CollectionView.ItemTemplate>
-                    </CollectionView>
-                </VerticalStackLayout>
-
-                <!-- Available Devices (new discoveries) -->
+                <!-- Available Devices (on top - all available devices including paired) -->
                 <VerticalStackLayout x:Name="AvailableDevicesSection"
                                    Spacing="12"
                                    IsVisible="False"
@@ -556,7 +474,7 @@
                     <Label Text="Available Devices"
                            FontSize="16"
                            FontAttributes="Bold"
-                           TextColor="#CCCCCC"
+                           TextColor="#4CAF50"
                            Margin="10,0,0,10" />
 
                     <CollectionView x:Name="AvailableDevicesView"
@@ -626,6 +544,81 @@
                                                 <TapGestureRecognizer Tapped="OnDeleteDeviceClicked" />
                                             </Border.GestureRecognizers>
                                             <Label Text="🗑️"
+                                                   FontSize="18"
+                                                   Opacity="0.7"
+                                                   HorizontalOptions="Center"
+                                                   VerticalOptions="Center" />
+                                        </Border>
+                                    </Grid>
+                                </Border>
+                            </DataTemplate>
+                        </CollectionView.ItemTemplate>
+                    </CollectionView>
+                </VerticalStackLayout>
+
+                <!-- Recently Paired (unavailable devices) -->
+                <VerticalStackLayout x:Name="CompatibleDevicesSection"
+                                   Spacing="12"
+                                   IsVisible="False"
+                                   Margin="0,10,0,0">
+
+                    <Label Text="Recently Paired"
+                           FontSize="16"
+                           FontAttributes="Bold"
+                           TextColor="#8E8E93"
+                           Margin="10,0,0,10" />
+
+                    <CollectionView x:Name="CompatibleDevicesView"
+                                  SelectionMode="Single"
+                                  SelectionChanged="OnRecentlyPairedDeviceSelected">
+                        <CollectionView.ItemTemplate>
+                            <DataTemplate>
+                                <Border BackgroundColor="#1E1E38"
+                                       StrokeThickness="1"
+                                       Padding="16"
+                                       Margin="0,0,0,8"
+                                       Opacity="{Binding IsAvailable, Converter={StaticResource BoolToOpacityConverter}}">
+                                    <Border.StrokeShape>
+                                        <RoundRectangle CornerRadius="12" />
+                                    </Border.StrokeShape>
+                                    <Border.Stroke>
+                                        <SolidColorBrush Color="{Binding IsAvailable, Converter={StaticResource BoolToStrokeColorConverter}}" />
+                                    </Border.Stroke>
+                                    <Grid ColumnDefinitions="Auto,*,Auto">
+                                        <Label FontSize="28"
+                                               VerticalOptions="Center"
+                                               Margin="0,0,12,0"
+                                               Text="{Binding IsAvailable, Converter={StaticResource BoolToStatusIconConverter}}" />
+                                        <VerticalStackLayout Grid.Column="1"
+                                                           Spacing="4"
+                                                           VerticalOptions="Center">
+                                            <Label Text="{Binding Name}"
+                                                   FontSize="16"
+                                                   FontAttributes="Bold"
+                                                   TextColor="{Binding IsAvailable, Converter={StaticResource BoolToTextColorConverter}}" />
+                                            <Label FontSize="12"
+                                                   TextColor="#8E8E93">
+                                                <Label.Text>
+                                                    <Binding Path="IsAvailable" Converter="{StaticResource BoolToAvailabilityTextConverter}" />
+                                                </Label.Text>
+                                            </Label>
+                                        </VerticalStackLayout>
+
+                                        <!-- Edit Name Button -->
+                                        <Border Grid.Column="2"
+                                                BackgroundColor="Transparent"
+                                                Stroke="#4A90E266"
+                                                StrokeThickness="1"
+                                                WidthRequest="40"
+                                                HeightRequest="40"
+                                                VerticalOptions="Center">
+                                            <Border.StrokeShape>
+                                                <RoundRectangle CornerRadius="20" />
+                                            </Border.StrokeShape>
+                                            <Border.GestureRecognizers>
+                                                <TapGestureRecognizer Tapped="OnEditDeviceNameClicked" />
+                                            </Border.GestureRecognizers>
+                                            <Label Text="✏️"
                                                    FontSize="18"
                                                    Opacity="0.7"
                                                    HorizontalOptions="Center"

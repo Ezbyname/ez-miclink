@@ -162,8 +162,7 @@ public partial class MainPage : ContentPage
 
 				// Hide device list sections
 				AvailableDevicesSection.IsVisible = false;
-				// TODO: RecentlyConnectedSection was removed
-				// RecentlyConnectedSection.IsVisible = false;
+				CompatibleDevicesSection.IsVisible = false;
 
 				// If we were connected, disconnect first
 				if (_bluetoothService.IsConnected)
@@ -389,8 +388,7 @@ public partial class MainPage : ContentPage
 			ScanButton.IsVisible = false;
 			MainCard.IsVisible = false;
 			AvailableDevicesSection.IsVisible = false;
-			// TODO: RecentlyConnectedSection was removed
-			// RecentlyConnectedSection.IsVisible = false;
+			CompatibleDevicesSection.IsVisible = false;
 			DeviceInfoSection.IsVisible = false;
 			AudioControlsSection.IsVisible = false;
 			MessageSection.IsVisible = false;
@@ -886,45 +884,29 @@ public partial class MainPage : ContentPage
 
 			if (_availableDevices.Any())
 			{
-			// NEW LOGIC: Show recently connected devices separately, but ALL devices in Available
-			// Recently Paired = Devices that have connection history (were successfully connected before)
-			var recentlyPairedDevices = _availableDevices
-				.Where(d => Services.DeviceConnectionHistory.HasConnectedBefore(d.Address))
-				.Take(3)  // Show max 3 recently paired devices
+			// Available Devices = All available devices (paired or not), exclude Unknown Device
+			var availableDevices = _availableDevices
+				.Where(d => d.IsAvailable
+					&& !d.Name.Equals("Unknown Device", StringComparison.OrdinalIgnoreCase))
 				.ToList();
 
-			// Available Devices = ALL devices (including paired, connected, everything)
-			var availableDevices = _availableDevices.ToList();
+			// Recently Paired = Paired devices that are NOT currently available (greyed out, not clickable)
+			var recentlyPairedDevices = _availableDevices
+				.Where(d => d.IsPaired && !d.IsAvailable)
+				.ToList();
 
 			System.Diagnostics.Debug.WriteLine($"[MainPage] ========== STEP 3: Display Devices ==========");
-			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Recently Paired Devices: {recentlyPairedDevices.Count} devices");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Recently Paired: {recentlyPairedDevices.Count} devices");
 			foreach (var device in recentlyPairedDevices)
-			{
-				// TODO: BluetoothDevice.IsConnected property not implemented
-				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}"); // , IsConnected: {device.IsConnected}
-			}
-
-			System.Diagnostics.Debug.WriteLine($"[MainPage] ✅ Available Devices: {availableDevices.Count} devices (ALL devices)");
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   -> {device.Name} ({device.Address}) Available: {device.IsAvailable}");
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Available Devices: {availableDevices.Count} devices");
 			foreach (var device in availableDevices)
-			{
-				// TODO: BluetoothDevice.IsConnected property not implemented
-				System.Diagnostics.Debug.WriteLine($"[MainPage]   → {device.Name} ({device.Address}) - IsPaired: {device.IsPaired}"); // , IsConnected: {device.IsConnected}
-			}
-
-			// CRITICAL FIX: Update UI directly without SetState to avoid race condition
-			// SetState uses MainThread.BeginInvokeOnMainThread which creates a race with our UI updates
-			System.Diagnostics.Debug.WriteLine("[MainPage] Updating UI directly on main thread...");
+				System.Diagnostics.Debug.WriteLine($"[MainPage]   -> {device.Name} ({device.Address})");
 
 			MainThread.BeginInvokeOnMainThread(() =>
 			{
-				System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] Starting UI update...");
-
-				// Update state tracker
 				_currentState = UIState.DeviceList;
 
-				// Hide everything except what we need
-				// TODO: HeaderSection was removed
-				// HeaderSection.IsVisible = true;
 				ScanButton.IsVisible = true;
 				MainCard.IsVisible = false;
 				DeviceInfoSection.IsVisible = false;
@@ -932,41 +914,30 @@ public partial class MainPage : ContentPage
 				MessageSection.IsVisible = false;
 				ActionButtonsSection.IsVisible = false;
 				SecondaryActionBorder.IsVisible = false;
-				
-				// BackButtonSection.IsVisible = false;
 
-				// Clear selections
 				AvailableDevicesView.SelectedItem = null;
-				// TODO: RecentlyConnectedView was removed
-				// RecentlyConnectedView.SelectedItem = null;
+				CompatibleDevicesView.SelectedItem = null;
 
-				// Show Recently Paired Devices section (devices with connection history)
-				// TODO: RecentlyConnectedView and RecentlyConnectedSection were removed
-				// if (recentlyPairedDevices.Any())
-				// {
-				// 	System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting RecentlyConnectedView with {recentlyPairedDevices.Count} devices");
-				// 	RecentlyConnectedView.ItemsSource = recentlyPairedDevices;
-				// 	RecentlyConnectedSection.IsVisible = true;
-				// 	System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ RecentlyConnectedSection is now VISIBLE");
-				// }
-				// else
-				// {
-				// 	RecentlyConnectedSection.IsVisible = false;
-				// 	System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] RecentlyConnectedSection hidden (no recently paired devices)");
-				// }
+				// Show Recently Paired section
+				if (recentlyPairedDevices.Any())
+				{
+					CompatibleDevicesView.ItemsSource = recentlyPairedDevices;
+					CompatibleDevicesSection.IsVisible = true;
+				}
+				else
+				{
+					CompatibleDevicesSection.IsVisible = false;
+				}
 
-				// Show Available Devices section (ALL devices - paired, connected, unpaired, everything)
+				// Show Available Devices section
 				if (availableDevices.Any())
 				{
-					System.Diagnostics.Debug.WriteLine($"[MainPage] [UI Thread] Setting AvailableDevicesView with {availableDevices.Count} devices");
 					AvailableDevicesView.ItemsSource = availableDevices;
 					AvailableDevicesSection.IsVisible = true;
-					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ✅ AvailableDevicesSection is now VISIBLE");
 				}
 				else
 				{
 					AvailableDevicesSection.IsVisible = false;
-					System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] AvailableDevicesSection hidden (no devices)");
 				}
 
 				System.Diagnostics.Debug.WriteLine("[MainPage] [UI Thread] ========== UI UPDATE COMPLETE ==========");
@@ -1049,6 +1020,23 @@ public partial class MainPage : ContentPage
 				System.Diagnostics.Debug.WriteLine($"[MainPage] Not connected to this device, showing connect button");
 				SetState(UIState.DeviceSelected);
 			}
+		}
+	}
+
+	private void OnRecentlyPairedDeviceSelected(object? sender, SelectionChangedEventArgs e)
+	{
+		if (e.CurrentSelection.Count > 0)
+		{
+			var device = e.CurrentSelection[0] as BluetoothDevice;
+			if (device != null && !device.IsAvailable)
+			{
+				// Device not available - block selection
+				System.Diagnostics.Debug.WriteLine($"[MainPage] Recently paired device {device.Name} is not available, ignoring selection");
+				((CollectionView)sender!).SelectedItem = null;
+				return;
+			}
+			// Device is available - delegate to normal selection handler
+			OnDeviceSelected(sender, e);
 		}
 	}
 
