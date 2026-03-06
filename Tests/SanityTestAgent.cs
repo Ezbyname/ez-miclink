@@ -336,8 +336,13 @@ public class SanityTestAgent
             // Test all presets
             var presets = new[]
             {
-                "clean", "podcast", "stage_mc", "karaoke", "announcer",
-                "robot", "megaphone", "stadium", "deep_voice", "chipmunk"
+                // Professional
+                "clean", "podcast", "announcer", "stage_mc", "karaoke", "stadium",
+                // Voice Effects
+                "robot", "megaphone", "deep_voice", "chipmunk", "anime",
+                // Character Voices
+                "nerdy", "squeaky_cartoon", "dopey_giant", "squawky_bird",
+                "dopey_dad", "mouse", "villain", "grumpy_cat"
             };
 
             foreach (var preset in presets)
