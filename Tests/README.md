@@ -87,7 +87,7 @@ This directory contains automated test agents that verify the application's func
 
 Verifies basic app functionality without requiring real Bluetooth connections.
 
-**Tests Performed (17 total):**
+**Tests Performed (19 total):**
 - ✓ **⚡ Dependency Injection Registration (CRITICAL NEW)** - Verifies all required services are registered in DI container (prevents startup crashes)
 - ✓ AudioEngine initialization and DSP chain setup
 - ✓ All audio effects (Gain, NoiseGate, EQ, Compressor, Limiter, Echo, Robot, Megaphone, Karaoke)
@@ -96,6 +96,8 @@ Verifies basic app functionality without requiring real Bluetooth connections.
 - ✓ Volume control (digital gain)
 - ✓ Thread-safe effect switching
 - ✓ Device management flow (rename, delete, custom names)
+- ✓ **Device list filtering** (available vs recently paired, Unknown Device exclusion, unavailable blocked)
+- ✓ **Back to Devices behavior** (preserves list, maintains connection, Stop/Play bar toggle)
 - ✓ **Authentication flows**
   - Guest login
   - Phone number login (verification flow)

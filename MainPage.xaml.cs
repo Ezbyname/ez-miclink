@@ -395,6 +395,7 @@ public partial class MainPage : ContentPage
 			ActionButtonsSection.IsVisible = false;
 			SecondaryActionBorder.IsVisible = false;
 			BackButtonSection.IsVisible = false;
+			ConnectedDeviceBar.IsVisible = false;
 
 			switch (newState)
 			{
@@ -1328,6 +1329,73 @@ public partial class MainPage : ContentPage
 		}
 	}
 
+	private async void OnDeviceBarStopClicked(object? sender, EventArgs e)
+	{
+		if (_isAudioOperationInProgress) return;
+		_isAudioOperationInProgress = true;
+
+		try
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Device bar Stop clicked");
+			await _audioService.StopAudioRoutingAsync();
+
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				DeviceBarStopBtn.IsVisible = false;
+				DeviceBarPlayBtn.IsVisible = true;
+				ConnectedDeviceBarStatus.Text = "Connected - Paused";
+				ConnectedDeviceBarStatus.TextColor = Color.FromArgb("#8E8E93");
+
+				// Also sync the main audio controls if they're visible
+				StartAudioBtn.IsVisible = true;
+				StartAudioBtn.IsEnabled = true;
+				StopAudioBtn.IsVisible = false;
+			});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Device bar stop error: {ex.Message}");
+		}
+		finally
+		{
+			_isAudioOperationInProgress = false;
+		}
+	}
+
+	private async void OnDeviceBarPlayClicked(object? sender, EventArgs e)
+	{
+		if (_isAudioOperationInProgress) return;
+		_isAudioOperationInProgress = true;
+
+		try
+		{
+			System.Diagnostics.Debug.WriteLine("[MainPage] Device bar Play clicked");
+			await _audioService.StartAudioRoutingAsync();
+
+			MainThread.BeginInvokeOnMainThread(() =>
+			{
+				DeviceBarPlayBtn.IsVisible = false;
+				DeviceBarStopBtn.IsVisible = true;
+				ConnectedDeviceBarStatus.Text = "Streaming";
+				ConnectedDeviceBarStatus.TextColor = Color.FromArgb("#4CAF50");
+
+				// Also sync the main audio controls if they're visible
+				StartAudioBtn.IsVisible = false;
+				StopAudioBtn.IsVisible = true;
+				StopAudioBtn.IsEnabled = true;
+			});
+		}
+		catch (Exception ex)
+		{
+			System.Diagnostics.Debug.WriteLine($"[MainPage] Device bar play error: {ex.Message}");
+			await DialogService.ShowErrorAsync("Audio Error", $"Failed to start audio.\n\n{ex.Message}");
+		}
+		finally
+		{
+			_isAudioOperationInProgress = false;
+		}
+	}
+
 	private void OnVolumeChanged(object? sender, ValueChangedEventArgs e)
 	{
 		var volume = (int)e.NewValue;
@@ -1364,23 +1432,86 @@ public partial class MainPage : ContentPage
 		}
 	}
 
-	private async void OnBackButtonClicked(object? sender, EventArgs e)
+	private void OnBackButtonClicked(object? sender, EventArgs e)
 	{
 		try
 		{
-			// Go back to device list while staying connected
-			System.Diagnostics.Debug.WriteLine("[MainPage] Back button clicked - returning to device list");
-			_selectedDevice = null;
-			SetState(UIState.Initial);
+			// Go back to device list WITHOUT rescanning, keep connection alive
+			System.Diagnostics.Debug.WriteLine("[MainPage] Back button clicked - returning to device list (no rescan)");
 
-			// Rescan to show device list
-			await Task.Delay(300);
-			await StartScanning();
+			ShowDeviceListWithConnectedBar();
 		}
 		catch (Exception ex)
 		{
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Back button error: {ex.Message}");
 		}
+	}
+
+	private void ShowDeviceListWithConnectedBar()
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			_currentState = UIState.DeviceList;
+
+			// Hide connected card UI
+			MainCard.IsVisible = false;
+			DeviceInfoSection.IsVisible = false;
+			AudioControlsSection.IsVisible = false;
+			MessageSection.IsVisible = false;
+			ActionButtonsSection.IsVisible = false;
+			SecondaryActionBorder.IsVisible = false;
+			BackButtonSection.IsVisible = false;
+
+			// Show scan button and cached device lists
+			ScanButton.IsVisible = true;
+
+			// Re-show the cached device lists
+			if (AvailableDevicesView.ItemsSource != null)
+				AvailableDevicesSection.IsVisible = true;
+			if (CompatibleDevicesView.ItemsSource != null)
+				CompatibleDevicesSection.IsVisible = true;
+
+			// Clear selections
+			AvailableDevicesView.SelectedItem = null;
+			CompatibleDevicesView.SelectedItem = null;
+
+			// Show the connected device bar if still connected
+			UpdateConnectedDeviceBar();
+		});
+	}
+
+	private void UpdateConnectedDeviceBar()
+	{
+		MainThread.BeginInvokeOnMainThread(() =>
+		{
+			if (_bluetoothService.IsConnected && _bluetoothService.ConnectedDevice != null)
+			{
+				var device = _bluetoothService.ConnectedDevice;
+				ConnectedDeviceBarName.Text = DeviceNameManager.GetDisplayName(device.Address, device.Name);
+
+				// Set play/stop state based on audio routing
+				if (_audioService.IsRouting)
+				{
+					ConnectedDeviceBarStatus.Text = "Streaming";
+					ConnectedDeviceBarStatus.TextColor = Color.FromArgb("#4CAF50");
+					DeviceBarStopBtn.IsVisible = true;
+					DeviceBarPlayBtn.IsVisible = false;
+				}
+				else
+				{
+					ConnectedDeviceBarStatus.Text = "Connected - Paused";
+					ConnectedDeviceBarStatus.TextColor = Color.FromArgb("#8E8E93");
+					DeviceBarStopBtn.IsVisible = false;
+					DeviceBarPlayBtn.IsVisible = true;
+				}
+
+				ConnectedDeviceBar.IsVisible = true;
+			}
+			else
+			{
+				ConnectedDeviceBar.IsVisible = false;
+			}
+		});
 	}
 
 	private async void OnRenameDeviceClicked(object? sender, EventArgs e)

@@ -477,6 +477,95 @@
                            TextColor="#4CAF50"
                            Margin="10,0,0,10" />
 
+                    <!-- Connected Device Bar (shown when returning from connected state) -->
+                    <Border x:Name="ConnectedDeviceBar"
+                            BackgroundColor="#1E1E38"
+                            StrokeThickness="1.5"
+                            Padding="12,10"
+                            Margin="0,0,0,8"
+                            IsVisible="False">
+                        <Border.StrokeShape>
+                            <RoundRectangle CornerRadius="14" />
+                        </Border.StrokeShape>
+                        <Border.Stroke>
+                            <SolidColorBrush Color="#4CAF5080" />
+                        </Border.Stroke>
+                        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="12">
+                            <Label Text="&#x1F50A;"
+                                   FontSize="24"
+                                   VerticalOptions="Center" />
+                            <VerticalStackLayout Grid.Column="1"
+                                               Spacing="2"
+                                               VerticalOptions="Center">
+                                <Label x:Name="ConnectedDeviceBarName"
+                                       Text="Device"
+                                       FontSize="15"
+                                       FontAttributes="Bold"
+                                       TextColor="White" />
+                                <Label x:Name="ConnectedDeviceBarStatus"
+                                       Text="Connected"
+                                       FontSize="11"
+                                       TextColor="#4CAF50" />
+                            </VerticalStackLayout>
+
+                            <!-- Stop/Play Toggle Button -->
+                            <Border x:Name="DeviceBarStopBtn"
+                                    Grid.Column="2"
+                                    StrokeThickness="0"
+                                    BackgroundColor="Transparent"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center"
+                                    IsVisible="True">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="22" />
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#FF5252" Offset="0.0" />
+                                        <GradientStop Color="#E53935" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnDeviceBarStopClicked" />
+                                </Border.GestureRecognizers>
+                                <Label Text="&#x25A0;"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                            <Border x:Name="DeviceBarPlayBtn"
+                                    Grid.Column="2"
+                                    StrokeThickness="0"
+                                    BackgroundColor="Transparent"
+                                    WidthRequest="44"
+                                    HeightRequest="44"
+                                    VerticalOptions="Center"
+                                    IsVisible="False">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="22" />
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#4CAF50" Offset="0.0" />
+                                        <GradientStop Color="#45A049" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnDeviceBarPlayClicked" />
+                                </Border.GestureRecognizers>
+                                <Label Text="&#x25B6;"
+                                       FontSize="18"
+                                       FontAttributes="Bold"
+                                       TextColor="White"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center" />
+                            </Border>
+                        </Grid>
+                    </Border>
+
                     <CollectionView x:Name="AvailableDevicesView"
                                   SelectionMode="Single"
                                   SelectionChanged="OnDeviceSelected">
