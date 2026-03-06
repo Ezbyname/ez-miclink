@@ -1413,6 +1413,11 @@ public partial class MainPage : ContentPage
 		await Navigation.PushAsync(new EffectsPage(_audioService));
 	}
 
+	private async void OnPremiumVoicesClicked(object? sender, EventArgs e)
+	{
+		await Navigation.PushAsync(new PremiumVoicesPage(_audioService));
+	}
+
 	private async void OnDisconnectClicked(object? sender, EventArgs e)
 	{
 		try

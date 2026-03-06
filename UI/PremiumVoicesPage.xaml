@@ -1,0 +1,353 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.UI.PremiumVoicesPage"
+             Title="Character Voices">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0A0E27" Offset="0.0" />
+            <GradientStop Color="#1A1A3E" Offset="0.3" />
+            <GradientStop Color="#2D2D58" Offset="0.7" />
+            <GradientStop Color="#1A1A3E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="25">
+
+            <!-- Header -->
+            <VerticalStackLayout Spacing="10" Margin="0,20,0,10">
+                <Label Text="&#x1F3AD; Character Voices"
+                       FontSize="28"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Transform into fun characters"
+                       FontSize="14"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Character Voice Cards -->
+            <VerticalStackLayout Spacing="12">
+
+                <!-- Nerdy -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="nerdy" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F913;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Nerdy"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Nasal high-pitched nerd voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="NerdyCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Squeaky Cartoon -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="squeaky_cartoon" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F4A5;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Squeaky Cartoon"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="High-pitched cartoon character"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="SqueakyCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Dopey Giant -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="dopey_giant" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F9CC;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Dopey Giant"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Deep slow gentle giant"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="DopeyGiantCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Squawky Bird -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="squawky_bird" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F99C;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Squawky Bird"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Screechy parrot-like voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="SquawkyCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Dopey Dad -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="dopey_dad" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F468;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Dopey Dad"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Warm goofy dad voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="DopeyDadCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Mouse -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="mouse" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F42D;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Mouse"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Tiny squeaky mouse voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="MouseCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Villain -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="villain" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F9B9;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Villain"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Dark sinister villain voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="VillainCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+                <!-- Grumpy Cat -->
+                <Border BackgroundColor="#1A1A2E"
+                        Stroke="#3A3A50"
+                        StrokeThickness="1"
+                        Padding="18">
+                    <Border.StrokeShape>
+                        <RoundRectangle CornerRadius="18" />
+                    </Border.StrokeShape>
+                    <Border.GestureRecognizers>
+                        <TapGestureRecognizer Tapped="OnVoiceSelected" CommandParameter="grumpy_cat" />
+                    </Border.GestureRecognizers>
+                    <Grid ColumnDefinitions="50,*,Auto">
+                        <Label Text="&#x1F63E;"
+                               FontSize="30"
+                               VerticalOptions="Center" />
+                        <VerticalStackLayout Grid.Column="1" Spacing="4" VerticalOptions="Center">
+                            <Label Text="Grumpy Cat"
+                                   FontSize="17"
+                                   FontAttributes="Bold"
+                                   TextColor="White" />
+                            <Label Text="Grouchy gravelly cat voice"
+                                   FontSize="12"
+                                   TextColor="#8E8E93" />
+                        </VerticalStackLayout>
+                        <Label Grid.Column="2"
+                               x:Name="GrumpyCatCheck"
+                               Text="&#x2713;"
+                               FontSize="24"
+                               TextColor="#4CAF50"
+                               IsVisible="False"
+                               VerticalOptions="Center" />
+                    </Grid>
+                </Border>
+
+            </VerticalStackLayout>
+
+            <!-- Current Voice Display -->
+            <Border BackgroundColor="#2D2D58"
+                    Stroke="#7B6BFF"
+                    StrokeThickness="2"
+                    Padding="20"
+                    Margin="0,10,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="10">
+                    <Label Text="Active Voice"
+                           FontSize="14"
+                           TextColor="#8E8E93"
+                           HorizontalOptions="Center" />
+                    <Label x:Name="CurrentVoiceLabel"
+                           Text="None"
+                           FontSize="20"
+                           FontAttributes="Bold"
+                           TextColor="White"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Back Button -->
+            <Border Stroke="#8E8E93"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,10,0,20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x2190; Back"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center"
+                       Padding="0,16" />
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

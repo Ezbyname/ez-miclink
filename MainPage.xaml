@@ -350,6 +350,59 @@
                                 </Border>
                             </Grid>
 
+                            <!-- Premium Voices Card -->
+                            <Border StrokeThickness="0"
+                                    Margin="0,5,0,0">
+                                <Border.StrokeShape>
+                                    <RoundRectangle CornerRadius="20" />
+                                </Border.StrokeShape>
+                                <Border.Background>
+                                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                                        <GradientStop Color="#2A1B4E" Offset="0.0" />
+                                        <GradientStop Color="#1A2A5E" Offset="0.5" />
+                                        <GradientStop Color="#2A1B4E" Offset="1.0" />
+                                    </LinearGradientBrush>
+                                </Border.Background>
+                                <Border.Shadow>
+                                    <Shadow Brush="#7B6BFF"
+                                            Offset="0,4"
+                                            Radius="16"
+                                            Opacity="0.3" />
+                                </Border.Shadow>
+                                <Border.GestureRecognizers>
+                                    <TapGestureRecognizer Tapped="OnPremiumVoicesClicked" />
+                                </Border.GestureRecognizers>
+                                <Grid Padding="18,16" ColumnDefinitions="Auto,*,Auto" ColumnSpacing="14">
+                                    <Border BackgroundColor="#7B6BFF30"
+                                            StrokeThickness="0"
+                                            WidthRequest="48"
+                                            HeightRequest="48"
+                                            VerticalOptions="Center">
+                                        <Border.StrokeShape>
+                                            <RoundRectangle CornerRadius="14" />
+                                        </Border.StrokeShape>
+                                        <Label Text="&#x1F3AD;"
+                                               FontSize="26"
+                                               HorizontalOptions="Center"
+                                               VerticalOptions="Center" />
+                                    </Border>
+                                    <VerticalStackLayout Grid.Column="1" Spacing="3" VerticalOptions="Center">
+                                        <Label Text="Character Voices"
+                                               FontSize="16"
+                                               FontAttributes="Bold"
+                                               TextColor="White" />
+                                        <Label Text="8 fun voice transformations"
+                                               FontSize="12"
+                                               TextColor="#A0A0CC" />
+                                    </VerticalStackLayout>
+                                    <Label Grid.Column="2"
+                                           Text="&#x203A;"
+                                           FontSize="28"
+                                           TextColor="#7B6BFF"
+                                           VerticalOptions="Center" />
+                                </Grid>
+                            </Border>
+
                             <!-- Disconnect Button -->
                             <Border Stroke="#FF5252"
                                     StrokeThickness="1.5"
