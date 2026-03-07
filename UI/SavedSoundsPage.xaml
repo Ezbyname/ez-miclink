@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.UI.SavedSoundsPage"
+             Title="My Saved Sounds">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0A0E27" Offset="0.0" />
+            <GradientStop Color="#1A1A3E" Offset="0.3" />
+            <GradientStop Color="#2D2D58" Offset="0.7" />
+            <GradientStop Color="#1A1A3E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="20">
+
+            <!-- Header -->
+            <VerticalStackLayout Spacing="8" Margin="0,20,0,10">
+                <Label Text="&#x1F4C2; My Saved Sounds"
+                       FontSize="26"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label Text="Your custom sound creations"
+                       FontSize="13"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Empty State -->
+            <Border x:Name="EmptyState"
+                    BackgroundColor="#1A1A2E"
+                    Stroke="#3A3A50"
+                    StrokeThickness="1"
+                    Padding="30"
+                    IsVisible="False">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <VerticalStackLayout Spacing="12" HorizontalOptions="Center">
+                    <Label Text="&#x1F3B5;"
+                           FontSize="48"
+                           HorizontalOptions="Center" />
+                    <Label Text="No saved sounds yet"
+                           FontSize="16"
+                           TextColor="#8E8E93"
+                           HorizontalOptions="Center" />
+                    <Label Text="Select any effect and tweak the equalizer to create your own!"
+                           FontSize="13"
+                           TextColor="#666"
+                           HorizontalTextAlignment="Center"
+                           HorizontalOptions="Center" />
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Saved Sounds List -->
+            <VerticalStackLayout x:Name="SoundsContainer" Spacing="10" />
+
+            <!-- Back Button -->
+            <Border Stroke="#8E8E93"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,10,0,20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x2190; Back"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center"
+                       Padding="0,16" />
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

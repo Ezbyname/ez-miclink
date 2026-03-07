@@ -1,0 +1,228 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:BluetoothMicrophoneApp.Components"
+             x:Class="BluetoothMicrophoneApp.UI.SoundEditorPage"
+             Title="Sound Editor">
+
+    <ContentPage.Background>
+        <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
+            <GradientStop Color="#0A0E27" Offset="0.0" />
+            <GradientStop Color="#1A1A3E" Offset="0.3" />
+            <GradientStop Color="#2D2D58" Offset="0.7" />
+            <GradientStop Color="#1A1A3E" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Background>
+
+    <ContentPage.Resources>
+        <LinearGradientBrush x:Key="GradientAmber" StartPoint="0.5,1" EndPoint="0.5,0">
+            <GradientStop Color="#FFB347" Offset="0.0" />
+            <GradientStop Color="#FF8C00" Offset="1.0" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="GradientCyan" StartPoint="0.5,1" EndPoint="0.5,0">
+            <GradientStop Color="#00E5FF" Offset="0.0" />
+            <GradientStop Color="#0091EA" Offset="1.0" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="GradientPink" StartPoint="0.5,1" EndPoint="0.5,0">
+            <GradientStop Color="#FF6EC7" Offset="0.0" />
+            <GradientStop Color="#D500F9" Offset="1.0" />
+        </LinearGradientBrush>
+        <LinearGradientBrush x:Key="GradientOrange" StartPoint="0.5,1" EndPoint="0.5,0">
+            <GradientStop Color="#FF9100" Offset="0.0" />
+            <GradientStop Color="#FF6D00" Offset="1.0" />
+        </LinearGradientBrush>
+    </ContentPage.Resources>
+
+    <ScrollView Padding="20">
+        <VerticalStackLayout Spacing="20">
+
+            <!-- Header with preset name -->
+            <VerticalStackLayout Spacing="8" Margin="0,20,0,0">
+                <Label x:Name="PresetNameLabel"
+                       Text="Sound Editor"
+                       FontSize="26"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label x:Name="PresetSubtitle"
+                       Text="Adjust the sound to your liking"
+                       FontSize="13"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center" />
+            </VerticalStackLayout>
+
+            <!-- Equalizer Panel -->
+            <Border BackgroundColor="#0D0D1A"
+                    Stroke="#FFFFFF14"
+                    StrokeThickness="1"
+                    Padding="16,20"
+                    Margin="0,10,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="24" />
+                </Border.StrokeShape>
+                <Border.Shadow>
+                    <Shadow Brush="#000000"
+                            Offset="0,6"
+                            Radius="20"
+                            Opacity="0.4" />
+                </Border.Shadow>
+
+                <VerticalStackLayout Spacing="16">
+                    <!-- Equalizer Title -->
+                    <Label Text="EQUALIZER"
+                           FontSize="13"
+                           FontAttributes="Bold"
+                           TextColor="#FFFFFF60"
+                           HorizontalOptions="Center"
+                           CharacterSpacing="3" />
+
+                    <!-- 4 Neon Sliders -->
+                    <Grid ColumnDefinitions="*,*,*,*"
+                          ColumnSpacing="4"
+                          HorizontalOptions="Center"
+                          Margin="0,8,0,8">
+
+                        <!-- Bass Slider (Amber) -->
+                        <controls:NeonVerticalSlider
+                            x:Name="BassSlider"
+                            Grid.Column="0"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            Gradient="{StaticResource GradientAmber}"
+                            AccentColor="#FFB347"
+                            ParameterName="Bass"
+                            ValueChanged="OnEQChanged" />
+
+                        <!-- Mid Slider (Cyan) -->
+                        <controls:NeonVerticalSlider
+                            x:Name="MidSlider"
+                            Grid.Column="1"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            Gradient="{StaticResource GradientCyan}"
+                            AccentColor="#00E5FF"
+                            ParameterName="Mid"
+                            ValueChanged="OnEQChanged" />
+
+                        <!-- Treble Slider (Pink) -->
+                        <controls:NeonVerticalSlider
+                            x:Name="TrebleSlider"
+                            Grid.Column="2"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            Gradient="{StaticResource GradientPink}"
+                            AccentColor="#FF6EC7"
+                            ParameterName="Treble"
+                            ValueChanged="OnEQChanged" />
+
+                        <!-- Distortion Slider (Orange) -->
+                        <controls:NeonVerticalSlider
+                            x:Name="DistortionSlider"
+                            Grid.Column="3"
+                            Minimum="0"
+                            Maximum="10"
+                            Value="0"
+                            Gradient="{StaticResource GradientOrange}"
+                            AccentColor="#FF9100"
+                            ParameterName="Grit"
+                            ValueChanged="OnEQChanged" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Save As Button (hidden until user modifies) -->
+            <Border x:Name="SaveAsButton"
+                    StrokeThickness="0"
+                    BackgroundColor="Transparent"
+                    IsVisible="False"
+                    Margin="0,5,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7B6BFF" Offset="0.0" />
+                        <GradientStop Color="#5B8FFF" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.Shadow>
+                    <Shadow Brush="#7B6BFF"
+                            Offset="0,4"
+                            Radius="16"
+                            Opacity="0.4" />
+                </Border.Shadow>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSaveAsClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x1F4BE; Save As Custom Sound"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       Padding="0,16" />
+            </Border>
+
+            <!-- Reset Button -->
+            <Border x:Name="ResetButton"
+                    Stroke="#FF525280"
+                    StrokeThickness="1.5"
+                    BackgroundColor="Transparent"
+                    IsVisible="False">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnResetClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="Reset to Default"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       TextColor="#FF5252"
+                       HorizontalOptions="Center"
+                       Padding="0,12" />
+            </Border>
+
+            <!-- My Saved Sounds Button -->
+            <Border Stroke="#7B6BFF"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,5,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="18" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSavedSoundsClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x1F4C2; My Saved Sounds"
+                       FontSize="14"
+                       FontAttributes="Bold"
+                       TextColor="#7B6BFF"
+                       HorizontalOptions="Center"
+                       Padding="0,12" />
+            </Border>
+
+            <!-- Back Button -->
+            <Border Stroke="#8E8E93"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,5,0,20">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="22" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x2190; Back"
+                       FontSize="18"
+                       FontAttributes="Bold"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center"
+                       Padding="0,16" />
+            </Border>
+
+        </VerticalStackLayout>
+    </ScrollView>
+</ContentPage>

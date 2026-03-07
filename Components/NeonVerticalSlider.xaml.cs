@@ -176,15 +176,11 @@ public partial class NeonVerticalSlider : ContentView
     #endregion
 
     private bool _isDragging = false;
+    private double _panStartValue;
 
     public NeonVerticalSlider()
     {
         InitializeComponent();
-
-        // Initialize internal slider range
-        InvisibleSlider.Minimum = Minimum;
-        InvisibleSlider.Maximum = Maximum;
-        InvisibleSlider.Value = Value;
 
         // Initial update
         UpdateVisuals(false);
@@ -196,7 +192,6 @@ public partial class NeonVerticalSlider : ContentView
     {
         if (bindable is NeonVerticalSlider slider)
         {
-            slider.InvisibleSlider.Value = (double)newValue;
             slider.UpdateVisuals(slider._isDragging);
         }
     }
@@ -205,8 +200,6 @@ public partial class NeonVerticalSlider : ContentView
     {
         if (bindable is NeonVerticalSlider slider)
         {
-            slider.InvisibleSlider.Minimum = slider.Minimum;
-            slider.InvisibleSlider.Maximum = slider.Maximum;
             slider.UpdateVisuals(slider._isDragging);
         }
     }
@@ -250,31 +243,67 @@ public partial class NeonVerticalSlider : ContentView
 
     #region Event Handlers
 
-    private void OnSliderValueChanged(object? sender, ValueChangedEventArgs e)
+    private void OnPanUpdated(object? sender, PanUpdatedEventArgs e)
     {
-        Value = e.NewValue;
-        UpdateVisuals(_isDragging);
+        const double trackHeight = 180.0;
 
-        // Raise external event
-        ValueChanged?.Invoke(this, e);
+        switch (e.StatusType)
+        {
+            case GestureStatus.Started:
+                _isDragging = true;
+                _panStartValue = Value;
+                UpdateVisuals(true);
+                DragStarted?.Invoke(this, EventArgs.Empty);
+                break;
+
+            case GestureStatus.Running:
+                // Dragging up (negative TotalY) increases value
+                double range = Maximum - Minimum;
+                double delta = -(e.TotalY / trackHeight) * range;
+                double newValue = Math.Clamp(_panStartValue + delta, Minimum, Maximum);
+
+                // Round to 1 decimal for clean display
+                newValue = Math.Round(newValue, 1);
+
+                if (newValue != Value)
+                {
+                    double oldValue = Value;
+                    Value = newValue;
+                    ValueChanged?.Invoke(this, new ValueChangedEventArgs(oldValue, newValue));
+                }
+                break;
+
+            case GestureStatus.Completed:
+            case GestureStatus.Canceled:
+                _isDragging = false;
+                UpdateVisuals(false);
+                DragCompleted?.Invoke(this, EventArgs.Empty);
+                break;
+        }
     }
 
-    private void OnSliderDragStarted(object? sender, EventArgs e)
+    private void OnTapped(object? sender, TappedEventArgs e)
     {
-        _isDragging = true;
-        UpdateVisuals(true);
+        const double trackHeight = 180.0;
 
-        // Raise external event
-        DragStarted?.Invoke(this, e);
-    }
+        // Get tap position relative to the touch overlay
+        var point = e.GetPosition(TouchOverlay);
+        if (point == null) return;
 
-    private void OnSliderDragCompleted(object? sender, EventArgs e)
-    {
-        _isDragging = false;
-        UpdateVisuals(false);
+        double tapY = point.Value.Y;
+        // Top = Maximum, Bottom = Minimum
+        double normalized = 1.0 - (tapY / trackHeight);
+        normalized = Math.Clamp(normalized, 0, 1);
 
-        // Raise external event
-        DragCompleted?.Invoke(this, e);
+        double range = Maximum - Minimum;
+        double newValue = Math.Round(Minimum + normalized * range, 1);
+
+        if (newValue != Value)
+        {
+            double oldValue = Value;
+            Value = newValue;
+            ValueChanged?.Invoke(this, new ValueChangedEventArgs(oldValue, newValue));
+        }
     }
 
     #endregion

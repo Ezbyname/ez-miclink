@@ -3,14 +3,16 @@ using BluetoothMicrophoneApp.Audio.DSP;
 namespace BluetoothMicrophoneApp.Audio.Presets;
 
 /// <summary>
-/// Grumpy, raspy, annoyed cat-like voice.
+/// Garfield-style lazy, low, bored cat voice.
 ///
-/// SIGNAL CHAIN: Gate -> DeepVoice (-4 semitones, -10% formant) -> Megaphone (rasp) -> EQ -> Compressor -> Limiter
+/// SIGNAL CHAIN: Gate -> DeepVoice (moderate) -> Warm EQ -> Compressor -> Limiter
 ///
-/// USE CASE:
-/// - Grumpy cat character
-/// - Annoyed/sarcastic voice
-/// - Old grumpy character
+/// CHARACTER REFERENCE: Garfield (Bill Murray / Lorenzo Music)
+/// - Moderately deep, smooth and round (not raspy)
+/// - Warm and laid-back, slightly bored quality
+/// - Rich low-mids for chest resonance
+/// - Rolled-off highs for that lazy, muffled feel
+/// - No distortion - Garfield is smooth, not growly
 /// </summary>
 public class GrumpyCatPreset : AudioPresetBase
 {
@@ -18,7 +20,7 @@ public class GrumpyCatPreset : AudioPresetBase
         : base(
             name: "grumpy_cat",
             displayName: "Grumpy Cat",
-            description: "Raspy annoyed grumpy cat character voice",
+            description: "Lazy low smooth cat voice (Garfield-style)",
             category: "Character Voices",
             isPremium: false)
     {
@@ -30,50 +32,40 @@ public class GrumpyCatPreset : AudioPresetBase
         gate.Prepare(sampleRate);
         gate.SetParameters(new NoiseGateEffect.NoiseGateParameters
         {
-            ThresholdDb = -45f, AttackMs = 1f, ReleaseMs = 150f, FloorGain = -80f, KneeDb = 6f
+            ThresholdDb = -50f, AttackMs = 0.5f, ReleaseMs = 200f, FloorGain = -40f, KneeDb = 10f
         });
         chain.AddEffect(gate);
 
-        // Deep grumpy pitch + formant shift
+        // Moderately deep - Garfield is low but not monster-deep
         var deep = new DeepVoiceEffect();
         deep.Prepare(sampleRate);
         deep.SetParameters(new DeepVoiceEffect.DeepVoiceParameters
         {
-            PitchSemitones = -4f,
-            FormantShiftPercent = -10f,
-            BassBoostDb = 5f,
-            Intensity = 1.0f
+            PitchSemitones = -2.5f,
+            FormantShiftPercent = -7f,
+            BassBoostDb = 3f,
+            Intensity = 0.9f
         });
         chain.AddEffect(deep);
 
-        // More distortion for raspy/growly quality
-        var megaphone = new MegaphoneEffect();
-        megaphone.Prepare(sampleRate);
-        megaphone.SetParameters(new MegaphoneEffect.MegaphoneParameters
-        {
-            LowCutoffHz = 120f,
-            HighCutoffHz = 5000f,
-            Distortion = 0.3f,
-            MidBoostDb = 3f
-        });
-        chain.AddEffect(megaphone);
-
-        // Emphasis on low-mids for grumpy rumble
+        // Warm, round EQ - boost low-mids for chest, cut highs for lazy feel
+        // No distortion/megaphone - Garfield is smooth not raspy
         var eq = new ThreeBandEQEffect();
         eq.Prepare(sampleRate);
         eq.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
         {
-            LowGainDb = 3f, LowFreq = 180f,
-            MidGainDb = 2f, MidFreq = 600f, MidQ = 1.5f,
-            HighGainDb = -3f, HighFreq = 4000f
+            LowGainDb = 2f, LowFreq = 180f,
+            MidGainDb = 1f, MidFreq = 500f, MidQ = 0.8f,
+            HighGainDb = -4f, HighFreq = 3500f
         });
         chain.AddEffect(eq);
 
+        // Gentle compression - laid-back dynamics, not punchy
         var compressor = new CompressorEffect();
         compressor.Prepare(sampleRate);
         compressor.SetParameters(new CompressorEffect.CompressorParameters
         {
-            ThresholdDb = -18f, Ratio = 4f, AttackMs = 10f, ReleaseMs = 120f, KneeDb = 6f, AutoMakeupGain = true
+            ThresholdDb = -20f, Ratio = 3f, AttackMs = 15f, ReleaseMs = 150f, KneeDb = 10f, AutoMakeupGain = true
         });
         chain.AddEffect(compressor);
 

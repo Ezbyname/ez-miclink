@@ -37,7 +37,7 @@ namespace BluetoothMicrophoneApp.Audio.DSP;
 /// </summary>
 public class AudioEngine
 {
-    private AudioEffectChain _effectChain;
+    private volatile AudioEffectChain _effectChain; // volatile for lock-free swap
     private int _sampleRate;
     private bool _isInitialized;
 
@@ -60,12 +60,21 @@ public class AudioEngine
     // private NoiseReductionEffect _noiseReduction;
     private volatile bool _noiseReductionEnabled; // LOCK-FREE: Atomic read/write
 
+    // Master post-processing EQ + distortion (user-tweakable in real-time)
+    private ThreeBandEQEffect _masterEQ;
+    private volatile float _masterEQLow = 0f;
+    private volatile float _masterEQMid = 0f;
+    private volatile float _masterEQHigh = 0f;
+    private volatile float _masterDistortion = 0f;
+    private volatile bool _masterEQActive = false;
+
     public AudioEngine()
     {
         _effectChain = new AudioEffectChain();
         _currentPreset = "None";
         _isInitialized = false;
         _masterGain = new GainEffect();
+        _masterEQ = new ThreeBandEQEffect();
         // TODO: Implement NoiseReductionEffect
         // _noiseReduction = new NoiseReductionEffect();
         _noiseReductionEnabled = true; // Enabled by default
@@ -121,6 +130,13 @@ public class AudioEngine
         _totalSamplesProcessed = 0;
         _processingStartTime = DateTime.Now;
         _masterGain.Prepare(sampleRate);
+        _masterEQ.Prepare(sampleRate);
+        _masterEQ.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
+        {
+            LowGainDb = 0f, LowFreq = 200f,
+            MidGainDb = 0f, MidFreq = 1000f, MidQ = 1.0f,
+            HighGainDb = 0f, HighFreq = 5000f
+        });
         // TODO: Implement NoiseReductionEffect
         // _noiseReduction.Prepare(sampleRate);
         _isInitialized = true;
@@ -161,8 +177,30 @@ public class AudioEngine
         //     _noiseReduction.Process(buffer, offset, count);
         // }
 
+        // Snapshot the chain reference (volatile read, lock-free)
+        var chain = _effectChain;
+
         // Process through effect chain
-        _effectChain.Process(buffer, offset, count);
+        chain.Process(buffer, offset, count);
+
+        // Apply user master EQ + distortion (post-processing, real-time tweakable)
+        if (_masterEQActive)
+        {
+            _masterEQ.Process(buffer, offset, count);
+
+            // Apply distortion (soft clipping waveshaper)
+            float distAmount = _masterDistortion;
+            if (distAmount > 0.01f)
+            {
+                for (int i = offset; i < offset + count; i++)
+                {
+                    float x = buffer[i];
+                    // Soft clipping: tanh-style waveshaping
+                    float drive = 1f + distAmount * 10f;
+                    buffer[i] = MathF.Tanh(x * drive) / MathF.Tanh(drive);
+                }
+            }
+        }
 
         // Apply master gain (LOCK-FREE via volatile field read)
         float masterGain = _masterGainValue; // Read volatile (atomic)
@@ -177,7 +215,7 @@ public class AudioEngine
         // Debug logging (only log once per second to avoid spam)
         if (_totalSamplesProcessed % _sampleRate == 0)
         {
-            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Processing: preset={_currentPreset}, effects={_effectChain.Count}, noiseReduction={_noiseReductionEnabled}");
+            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Processing: preset={_currentPreset}, effects={chain.Count}, noiseReduction={_noiseReductionEnabled}");
         }
     }
 
@@ -197,51 +235,48 @@ public class AudioEngine
 
         System.Diagnostics.Debug.WriteLine($"[AudioEngine] SetPreset called: {presetName}");
 
-        // Clear existing chain
-        _effectChain.Clear();
+        // Resolve the preset name
+        string resolvedName = presetName;
 
-        // TRY REGISTRY FIRST (NEW ARCHITECTURE)
-        // If preset is registered, use it (Open/Closed Principle)
-        if (_presetRegistry.Contains(presetName))
+        if (!_presetRegistry.Contains(presetName))
         {
-            System.Diagnostics.Debug.WriteLine($"[AudioEngine] ✅ Using registry preset: {presetName}");
-            _presetRegistry.ApplyPreset(presetName, _effectChain, _sampleRate);
-            _currentPreset = presetName;
-            System.Diagnostics.Debug.WriteLine($"[AudioEngine] Preset loaded successfully: {_currentPreset}");
-            return; // DONE - preset applied from registry
-        }
+            // Try alias resolution
+            resolvedName = presetName.ToLower() switch
+            {
+                "helium" => "chipmunk",
+                "stage mc" => "stage_mc",
+                "deep voice" => "deep_voice",
+                "anime_voice" => "anime",
+                "nerdy_voice" => "nerdy",
+                "squeaky" => "squeaky_cartoon",
+                "dopey giant" => "dopey_giant",
+                "squawky bird" or "duck" => "squawky_bird",
+                "dopey dad" => "dopey_dad",
+                "mouse_squeak" => "mouse",
+                "accented_villain" => "villain",
+                "grumpy" => "grumpy_cat",
+                "none" => "clean",
+                _ => null
+            };
 
-        // FALLBACK: Map aliases to registry names
-        System.Diagnostics.Debug.WriteLine($"[AudioEngine] Resolving alias for: {presetName}");
+            if (resolvedName == null || !_presetRegistry.Contains(resolvedName))
+                throw new ArgumentException($"Unknown preset: {presetName}. Available: {string.Join(", ", _presetRegistry.GetAllPresetNames())}");
 
-        var resolvedName = presetName.ToLower() switch
-        {
-            "helium" => "chipmunk",
-            "stage mc" => "stage_mc",
-            "deep voice" => "deep_voice",
-            "anime_voice" => "anime",
-            "nerdy_voice" => "nerdy",
-            "squeaky" => "squeaky_cartoon",
-            "dopey giant" => "dopey_giant",
-            "squawky bird" => "squawky_bird",
-            "duck" => "squawky_bird",
-            "dopey dad" => "dopey_dad",
-            "mouse_squeak" => "mouse",
-            "accented_villain" => "villain",
-            "grumpy" => "grumpy_cat",
-            "none" => "clean",
-            _ => null
-        };
-
-        if (resolvedName != null && _presetRegistry.Contains(resolvedName))
-        {
             System.Diagnostics.Debug.WriteLine($"[AudioEngine] Resolved '{presetName}' -> '{resolvedName}'");
-            _presetRegistry.ApplyPreset(resolvedName, _effectChain, _sampleRate);
-            _currentPreset = presetName;
-            return;
         }
 
-        throw new ArgumentException($"Unknown preset: {presetName}. Available: {string.Join(", ", _presetRegistry.GetAllPresetNames())}");
+        // BUILD NEW CHAIN on UI thread (no mutation of active chain)
+        var newChain = new AudioEffectChain();
+        _presetRegistry.ApplyPreset(resolvedName, newChain, _sampleRate);
+        newChain.Prepare(_sampleRate);
+
+        // ATOMIC SWAP: Replace the chain reference (volatile write)
+        // The audio thread will pick up the new chain on its next iteration.
+        // Old chain becomes garbage (no audio thread reference after swap).
+        _effectChain = newChain;
+
+        _currentPreset = presetName;
+        System.Diagnostics.Debug.WriteLine($"[AudioEngine] Preset loaded successfully: {_currentPreset}");
     }
 
     /// <summary>
@@ -330,8 +365,61 @@ public class AudioEngine
                $"Effect Chain:\n{_effectChain.GetChainDescription()}";
     }
 
-    // Legacy Build methods removed - all presets now use the PresetRegistry pattern.
-    // See Audio/Presets/ folder for individual preset implementations.
+    /// <summary>
+    /// Set master post-processing EQ. Called from UI thread.
+    /// These are applied AFTER the preset chain, allowing user to tweak any sound.
+    /// </summary>
+    public void SetMasterEQ(float lowDb, float midDb, float highDb)
+    {
+        _masterEQLow = Math.Clamp(lowDb, -12f, 12f);
+        _masterEQMid = Math.Clamp(midDb, -12f, 12f);
+        _masterEQHigh = Math.Clamp(highDb, -12f, 12f);
+        _masterEQActive = true;
+
+        _masterEQ.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
+        {
+            LowGainDb = _masterEQLow, LowFreq = 200f,
+            MidGainDb = _masterEQMid, MidFreq = 1000f, MidQ = 1.0f,
+            HighGainDb = _masterEQHigh, HighFreq = 5000f
+        });
+    }
+
+    /// <summary>
+    /// Set master distortion amount. 0 = clean, 1 = heavy distortion.
+    /// </summary>
+    public void SetMasterDistortion(float amount)
+    {
+        _masterDistortion = Math.Clamp(amount, 0f, 1f);
+        if (!_masterEQActive && amount > 0.01f)
+            _masterEQActive = true;
+    }
+
+    /// <summary>
+    /// Get current master EQ values.
+    /// </summary>
+    public (float Low, float Mid, float High, float Distortion) GetMasterEQ()
+    {
+        return (_masterEQLow, _masterEQMid, _masterEQHigh, _masterDistortion);
+    }
+
+    /// <summary>
+    /// Reset master EQ to flat (no modification).
+    /// </summary>
+    public void ResetMasterEQ()
+    {
+        _masterEQLow = 0f;
+        _masterEQMid = 0f;
+        _masterEQHigh = 0f;
+        _masterDistortion = 0f;
+        _masterEQActive = false;
+
+        _masterEQ.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
+        {
+            LowGainDb = 0f, LowFreq = 200f,
+            MidGainDb = 0f, MidFreq = 1000f, MidQ = 1.0f,
+            HighGainDb = 0f, HighFreq = 5000f
+        });
+    }
 }
 
 /// <summary>

@@ -360,8 +360,28 @@ public class AudioService : IAudioService
             "robot", "megaphone", "stadium", "deep_voice", "chipmunk",
             // Premium character voices
             "nerdy", "squeaky_cartoon", "dopey_giant", "squawky_bird",
-            "dopey_dad", "mouse_squeak", "villain", "grumpy"
+            "dopey_dad", "mouse", "villain", "grumpy_cat"
         };
+    }
+
+    public void SetMasterEQ(float lowDb, float midDb, float highDb)
+    {
+        _audioEngine.SetMasterEQ(lowDb, midDb, highDb);
+    }
+
+    public void SetMasterDistortion(float amount)
+    {
+        _audioEngine.SetMasterDistortion(amount);
+    }
+
+    public (float Low, float Mid, float High, float Distortion) GetMasterEQ()
+    {
+        return _audioEngine.GetMasterEQ();
+    }
+
+    public void ResetMasterEQ()
+    {
+        _audioEngine.ResetMasterEQ();
     }
 
     /// <summary>
@@ -407,7 +427,10 @@ public class AudioService : IAudioService
             catch (Exception ex)
             {
                 System.Diagnostics.Debug.WriteLine($"[AudioEngine-RT] Audio routing error: {ex.Message}");
-                break;
+                // Don't break - continue processing. Skip this buffer and try next.
+                // Only break on fatal errors like device disconnection.
+                if (_shouldStop || _audioRecord?.RecordingState != global::Android.Media.RecordState.Recording)
+                    break;
             }
         }
 

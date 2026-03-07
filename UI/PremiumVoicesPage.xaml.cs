@@ -62,15 +62,8 @@ public partial class PremiumVoicesPage : ContentPage
 
 			_audioService.SetEffect(voicePreset);
 
-			await DialogService.ShowSuccessAsync(
-				"Voice Activated",
-				$"{displayName} voice is now active!",
-				new List<string>
-				{
-					"Your voice is being transformed in real-time",
-					"Select another voice or go back to change"
-				}
-			);
+			// Navigate to sound editor with the selected voice
+			await Navigation.PushAsync(new SoundEditorPage(_audioService, voicePreset, displayName));
 		}
 		catch (Exception ex)
 		{

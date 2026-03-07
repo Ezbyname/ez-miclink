@@ -13,6 +13,10 @@ public interface IAudioService : IDisposable
     void SetNoiseReduction(bool enabled);
     string GetCurrentEffect();
     string[] GetAvailableEffects();
+    void SetMasterEQ(float lowDb, float midDb, float highDb);
+    void SetMasterDistortion(float amount);
+    (float Low, float Mid, float High, float Distortion) GetMasterEQ();
+    void ResetMasterEQ();
     bool IsRouting { get; }
     event EventHandler<string>? StatusChanged;
 }

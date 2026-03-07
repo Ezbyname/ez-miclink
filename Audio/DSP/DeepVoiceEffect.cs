@@ -71,6 +71,9 @@ public class DeepVoiceEffect : IAudioEffect
     private float _compAttackCoef;
     private float _compReleaseCoef;
 
+    // Pre-allocated dry buffer (avoids GC on audio thread)
+    private float[] _dryBuffer;
+
     public bool Bypass { get; set; }
 
     public class DeepVoiceParameters
@@ -98,6 +101,7 @@ public class DeepVoiceEffect : IAudioEffect
         _presenceCut = new BiquadFilter();
         _rmsEnvelope = 0f;
         _gainEnvelope = 1f;
+        _dryBuffer = Array.Empty<float>();
     }
 
     public void Prepare(int sampleRate)
@@ -114,11 +118,12 @@ public class DeepVoiceEffect : IAudioEffect
 
         float intensity = Math.Clamp(_params.Intensity, 0f, 1f);
 
-        // Store original for dry/wet blend
-        float[] dry = new float[count];
+        // Store original for dry/wet blend (pre-allocated buffer)
+        if (_dryBuffer.Length < count)
+            _dryBuffer = new float[count];
         for (int i = 0; i < count; i++)
         {
-            dry[i] = buffer[offset + i];
+            _dryBuffer[i] = buffer[offset + i];
         }
 
         // 1. Apply pitch shifting (down)
@@ -174,7 +179,7 @@ public class DeepVoiceEffect : IAudioEffect
         // 6. Blend with dry signal based on intensity
         for (int i = 0; i < count; i++)
         {
-            buffer[offset + i] = DSPHelpers.Lerp(dry[i], buffer[offset + i], intensity);
+            buffer[offset + i] = DSPHelpers.Lerp(_dryBuffer[i], buffer[offset + i], intensity);
         }
     }
 

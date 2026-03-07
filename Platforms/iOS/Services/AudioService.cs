@@ -23,7 +23,7 @@ public class AudioService : IAudioService
         _floatBuffer = Array.Empty<float>();
     }
 
-    public async Task<bool> StartAudioRoutingAsync()
+    public async Task<bool> StartAudioRoutingAsync(CancellationToken cancellationToken = default)
     {
         try
         {
@@ -116,7 +116,7 @@ public class AudioService : IAudioService
         }
     }
 
-    public async Task StopAudioRoutingAsync()
+    public async Task StopAudioRoutingAsync(CancellationToken cancellationToken = default)
     {
         _audioEngine?.Stop();
         _inputNode?.RemoveTapOnBus(0);
@@ -174,8 +174,42 @@ public class AudioService : IAudioService
         return new[]
         {
             "clean", "podcast", "stage_mc", "karaoke", "announcer",
-            "robot", "megaphone", "stadium", "deep_voice", "chipmunk"
+            "robot", "megaphone", "stadium", "deep_voice", "chipmunk",
+            "nerdy", "squeaky_cartoon", "dopey_giant", "squawky_bird",
+            "dopey_dad", "mouse", "villain", "grumpy_cat"
         };
+    }
+
+    public void SetMasterEQ(float lowDb, float midDb, float highDb)
+    {
+        _dspEngine.SetMasterEQ(lowDb, midDb, highDb);
+    }
+
+    public void SetMasterDistortion(float amount)
+    {
+        _dspEngine.SetMasterDistortion(amount);
+    }
+
+    public (float Low, float Mid, float High, float Distortion) GetMasterEQ()
+    {
+        return _dspEngine.GetMasterEQ();
+    }
+
+    public void ResetMasterEQ()
+    {
+        _dspEngine.ResetMasterEQ();
+    }
+
+    public void SetNoiseReduction(bool enabled)
+    {
+        _dspEngine.SetNoiseReduction(enabled);
+    }
+
+    public void Dispose()
+    {
+        _audioEngine?.Stop();
+        _audioEngine?.Dispose();
+        _audioEngine = null;
     }
 
     private unsafe void ProcessAudioBuffer(AVAudioPCMBuffer buffer)

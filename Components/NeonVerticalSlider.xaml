@@ -89,21 +89,9 @@
                 <Label Text="-10" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="End" />
             </VerticalStackLayout>
 
-            <!-- Invisible Slider (functionality only) -->
-            <Slider x:Name="InvisibleSlider"
-                    Minimum="-10"
-                    Maximum="10"
-                    Value="0"
-                    Opacity="0.01"
-                    Rotation="90"
-                    WidthRequest="170"
-                    HorizontalOptions="Center"
-                    ValueChanged="OnSliderValueChanged"
-                    DragStarted="OnSliderDragStarted"
-                    DragCompleted="OnSliderDragCompleted" />
-
             <!-- LAYER 5: Handle Block (rectangular, floating, dark glass) -->
             <Border x:Name="HandleBorder"
+                    InputTransparent="True"
                     WidthRequest="56"
                     HeightRequest="42"
                     Stroke="#FFFFFF1A"
@@ -143,6 +131,18 @@
                     </Border.Shadow>
                 </Border>
             </Border>
+
+            <!-- Touch overlay (must be last for highest Z-order) -->
+            <Grid x:Name="TouchOverlay"
+                  BackgroundColor="Transparent"
+                  HorizontalOptions="Fill"
+                  VerticalOptions="Fill"
+                  InputTransparent="False">
+                <Grid.GestureRecognizers>
+                    <PanGestureRecognizer PanUpdated="OnPanUpdated" />
+                    <TapGestureRecognizer Tapped="OnTapped" />
+                </Grid.GestureRecognizers>
+            </Grid>
         </Grid>
 
         <!-- Parameter Name -->

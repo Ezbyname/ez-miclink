@@ -74,16 +74,9 @@ public partial class EffectsPage : ContentPage
 			string effectPresetName = effect.Replace(" ", "_").ToLower();
 			_audioService.SetEffect(effectPresetName);
 
-			// Show confirmation
-			await DialogService.ShowSuccessAsync(
-				"Effect Applied",
-				$"{effect} effect has been activated!",
-				new List<string>
-				{
-					"This effect is now processing your voice in real-time",
-					"You can change effects at any time"
-				}
-			);
+			// Navigate to sound editor with the selected effect
+			string presetName = effectPresetName;
+			await Navigation.PushAsync(new SoundEditorPage(_audioService, presetName, effect));
 		}
 		catch (Exception ex)
 		{
