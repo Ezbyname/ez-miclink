@@ -1,8 +1,10 @@
 using Android.Media;
+using Android.Media.Audiofx;
 using BluetoothMicrophoneApp.Services;
 using BluetoothMicrophoneApp.Audio.DSP;
 using Android.Content;
 using System.Buffers;
+using System.Runtime.Versioning;
 
 namespace BluetoothMicrophoneApp.Platforms.Android.Services;
 
@@ -10,6 +12,7 @@ namespace BluetoothMicrophoneApp.Platforms.Android.Services;
 /// Android audio service with proper resource management and async patterns.
 /// Implements IDisposable for cleanup of unmanaged audio resources.
 /// </summary>
+[SupportedOSPlatform("android23.0")]
 public class AudioService : IAudioService
 {
     private AudioManager? _audioManager;
@@ -26,6 +29,8 @@ public class AudioService : IAudioService
     private bool _disposed = false;
     private bool _usingSco = false; // true=SCO (headset), false=A2DP (speaker)
     private AudioDeviceInfo? _a2dpDevice = null; // cached A2DP device for SetPreferredDevice
+    private AcousticEchoCanceler? _echoCanceler = null; // Hardware AEC on AudioRecord session
+    private FeedbackCanceller _feedbackCanceller = new FeedbackCanceller(); // Software echo canceller for BT speakers
 
     public bool IsRouting => _isRouting;
 
@@ -149,15 +154,61 @@ public class AudioService : IAudioService
             System.Diagnostics.Debug.WriteLine($"[AudioService] OUTPUT TARGET: {outputTarget}");
             System.Diagnostics.Debug.WriteLine("[AudioService] ");
 
+            // Use VoiceCommunication source when speaker is nearby (enables Android's AEC pipeline)
+            // Falls back to Mic if VoiceCommunication fails
+            AudioSource micSource = AudioSource.VoiceCommunication;
             _audioRecord = new AudioRecord(
-                AudioSource.Mic,  // ← CAPTURES FROM PHONE'S MICROPHONE
+                micSource,  // ← VoiceCommunication enables Android's echo cancellation pipeline
                 sampleRate,
                 channelConfig,
                 audioFormat,
                 minBufferSize * 2
             );
 
-            System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AudioRecord created: Capturing from phone microphone");
+            if (_audioRecord.State != State.Initialized)
+            {
+                // Fallback: some devices don't support VoiceCommunication source
+                System.Diagnostics.Debug.WriteLine("[AudioService] VoiceCommunication source failed, falling back to Mic");
+                _audioRecord.Release();
+                _audioRecord.Dispose();
+                micSource = AudioSource.Mic;
+                _audioRecord = new AudioRecord(
+                    micSource,
+                    sampleRate,
+                    channelConfig,
+                    audioFormat,
+                    minBufferSize * 2
+                );
+            }
+
+            System.Diagnostics.Debug.WriteLine($"[AudioService] ✓ AudioRecord created: source={micSource}, capturing from phone microphone");
+
+            // Enable hardware Acoustic Echo Cancellation (AEC)
+            // This prevents feedback loops when speaker output is picked up by the microphone
+            try
+            {
+                if (AcousticEchoCanceler.IsAvailable)
+                {
+                    _echoCanceler = AcousticEchoCanceler.Create(_audioRecord.AudioSessionId);
+                    if (_echoCanceler != null)
+                    {
+                        _echoCanceler.SetEnabled(true);
+                        System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Acoustic Echo Canceler ENABLED (hardware AEC)");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[AudioService] ⚠ AcousticEchoCanceler.Create returned null");
+                    }
+                }
+                else
+                {
+                    System.Diagnostics.Debug.WriteLine("[AudioService] ⚠ AcousticEchoCanceler not available on this device");
+                }
+            }
+            catch (Exception aecEx)
+            {
+                System.Diagnostics.Debug.WriteLine($"[AudioService] ⚠ AEC init failed: {aecEx.Message}");
+            }
 
             // Configure audio playback - different attributes for SCO vs A2DP
             if (_usingSco)
@@ -204,6 +255,10 @@ public class AudioService : IAudioService
             // Initialize audio engine
             _audioEngine.Initialize(sampleRate);
             _audioEngine.SetPreset("clean"); // Start with clean preset
+
+            // Initialize software feedback canceller (for BT speaker echo)
+            _feedbackCanceller.Prepare(sampleRate);
+            System.Diagnostics.Debug.WriteLine("[AudioService] ✓ Feedback canceller initialized (software AEC for BT speakers)");
 
             // Load noise reduction setting (default: enabled)
             bool noiseReductionEnabled = Microsoft.Maui.Storage.Preferences.Get("noise_reduction", true);
@@ -479,8 +534,15 @@ public class AudioService : IAudioService
                     // Convert PCM16 to float (no allocation)
                     ConvertPCM16ToFloat(_pcmBuffer, _floatBuffer, sampleCount);
 
+                    // Cancel echo from mic input BEFORE DSP processing
+                    // This removes the speaker feedback that the mic picked up
+                    _feedbackCanceller.CancelEcho(_floatBuffer, 0, sampleCount);
+
                     // Process through DSP engine (LOCK-FREE!)
                     _audioEngine.ProcessBuffer(_floatBuffer, 0, sampleCount);
+
+                    // Record what we're about to send to speaker (reference for echo cancellation)
+                    _feedbackCanceller.RecordReference(_floatBuffer, 0, sampleCount);
 
                     // Convert float back to PCM16 (no allocation)
                     ConvertFloatToPCM16(_floatBuffer, _pcmBuffer, sampleCount);
@@ -670,6 +732,21 @@ public class AudioService : IAudioService
     /// </summary>
     private void DisposeAudioRecord()
     {
+        try
+        {
+            if (_echoCanceler != null)
+            {
+                _echoCanceler.SetEnabled(false);
+                _echoCanceler.Release();
+                _echoCanceler = null;
+                System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AcousticEchoCanceler released");
+            }
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error disposing AEC: {ex.Message}");
+        }
+
         try
         {
             if (_audioRecord != null)
