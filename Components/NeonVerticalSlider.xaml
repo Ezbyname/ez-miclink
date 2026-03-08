@@ -7,14 +7,15 @@
     <VerticalStackLayout Spacing="6" HorizontalOptions="Center">
         <!-- Value Label -->
         <Label x:Name="ValueLabel"
+               Text="0"
                FontSize="18"
                FontAttributes="Bold"
                HorizontalOptions="Center" />
 
-        <!-- Neon Vertical Slider Container (72x180px) -->
+        <!-- Slider Container -->
         <Grid WidthRequest="72" HeightRequest="180">
 
-            <!-- LAYER 1: Background Track (14x180px, centered) -->
+            <!-- Background Track -->
             <Border WidthRequest="14"
                     HeightRequest="180"
                     BackgroundColor="#00000099"
@@ -25,80 +26,28 @@
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#000000"
-                            Opacity="0.3"
-                            Radius="6"
-                            Offset="0,2" />
-                </Border.Shadow>
             </Border>
 
-            <!-- LAYER 2: Active Neon Fill (bottom to current value, gradient + glow) -->
+            <!-- Neon Fill (grows from bottom) -->
             <Border x:Name="FillBorder"
                     WidthRequest="14"
-                    HeightRequest="90"
+                    HeightRequest="0"
                     VerticalOptions="End"
                     HorizontalOptions="Center">
                 <Border.StrokeShape>
                     <RoundRectangle CornerRadius="10" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow x:Name="FillShadow"
-                            Opacity="0.6"
-                            Radius="12"
-                            Offset="0,0" />
-                </Border.Shadow>
             </Border>
 
-            <!-- LAYER 3: Tick Marks Layer (Left & Right sides, every 16px) -->
-            <Grid HorizontalOptions="Center" VerticalOptions="Fill">
-                <!-- Left Ticks -->
-                <VerticalStackLayout Spacing="14" Margin="0,8,22,8" HorizontalOptions="Start" VerticalOptions="FillAndExpand">
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="End" />
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="End" />
-                </VerticalStackLayout>
-
-                <!-- Right Ticks -->
-                <VerticalStackLayout Spacing="14" Margin="22,8,0,8" HorizontalOptions="End" VerticalOptions="FillAndExpand">
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="8" HorizontalOptions="Start" />
-                    <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="14" HorizontalOptions="Start" />
-                </VerticalStackLayout>
-            </Grid>
-
-            <!-- LAYER 4: Numeric Labels Layer (Right side only: +10, 0, -10) -->
-            <VerticalStackLayout Spacing="0"
-                                Margin="0,8,2,8"
-                                HorizontalOptions="End"
-                                VerticalOptions="FillAndExpand">
-                <Label Text="+10" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="Start" />
-                <Label Text="0" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="Center" />
-                <Label Text="-10" FontSize="12" FontAttributes="Bold" TextColor="#FFFFFF99" VerticalOptions="End" />
-            </VerticalStackLayout>
-
-            <!-- LAYER 5: Handle Block (rectangular, floating, dark glass) -->
-            <Border x:Name="HandleBorder"
+            <!-- Handle button: VerticalOptions=End, pushed up via Margin.Bottom (same as fill) -->
+            <Border x:Name="HandleButton"
                     InputTransparent="True"
-                    WidthRequest="56"
-                    HeightRequest="42"
-                    Stroke="#FFFFFF1A"
+                    WidthRequest="48"
+                    HeightRequest="24"
+                    Stroke="#FFFFFF30"
                     StrokeThickness="1"
                     HorizontalOptions="Center"
-                    VerticalOptions="Start"
-                    TranslationY="0">
+                    VerticalOptions="End">
                 <Border.Background>
                     <LinearGradientBrush StartPoint="0,0" EndPoint="0,1">
                         <GradientStop Color="#2A2A3A" Offset="0.0" />
@@ -106,43 +55,75 @@
                     </LinearGradientBrush>
                 </Border.Background>
                 <Border.StrokeShape>
-                    <RoundRectangle CornerRadius="10" />
+                    <RoundRectangle CornerRadius="8" />
                 </Border.StrokeShape>
-                <Border.Shadow>
-                    <Shadow Brush="#000000"
-                            Opacity="0.6"
-                            Radius="8"
-                            Offset="0,2" />
-                </Border.Shadow>
-                <!-- Inner Highlight Line with Glow -->
                 <Border x:Name="InnerHighlight"
-                        WidthRequest="24"
+                        WidthRequest="20"
                         HeightRequest="4"
                         HorizontalOptions="Center"
                         VerticalOptions="Center">
                     <Border.StrokeShape>
                         <RoundRectangle CornerRadius="2" />
                     </Border.StrokeShape>
-                    <Border.Shadow>
-                        <Shadow x:Name="HighlightShadow"
-                                Opacity="0.8"
-                                Radius="6"
-                                Offset="0,0" />
-                    </Border.Shadow>
                 </Border>
             </Border>
 
-            <!-- Touch overlay (must be last for highest Z-order) -->
+            <!-- Center/zero bold line -->
+            <BoxView x:Name="CenterLine"
+                     Color="#FFFFFFAA"
+                     HeightRequest="2"
+                     WidthRequest="40"
+                     HorizontalOptions="Center"
+                     VerticalOptions="Center" />
+
+            <!-- Left Ticks -->
+            <VerticalStackLayout Spacing="14" Margin="2,8,0,8"
+                                 HorizontalOptions="Start" VerticalOptions="Fill">
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="End" />
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="End" />
+            </VerticalStackLayout>
+
+            <!-- Right Ticks -->
+            <VerticalStackLayout Spacing="14" Margin="0,8,2,8"
+                                 HorizontalOptions="End" VerticalOptions="Fill">
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF26" HeightRequest="2" WidthRequest="7" HorizontalOptions="Start" />
+                <BoxView Color="#FFFFFF40" HeightRequest="2" WidthRequest="12" HorizontalOptions="Start" />
+            </VerticalStackLayout>
+
+            <!-- Scale labels (set dynamically in code based on Min/Max) -->
+            <Label x:Name="TopLabel" Text="10" FontSize="9" FontAttributes="Bold"
+                   TextColor="#FFFFFF70"
+                   HorizontalOptions="End" VerticalOptions="Start"
+                   Margin="0,0,0,0" />
+            <Label x:Name="MidLabel" Text="0" FontSize="9" FontAttributes="Bold"
+                   TextColor="#FFFFFFAA"
+                   HorizontalOptions="End" VerticalOptions="Center" />
+            <Label x:Name="BottomLabel" Text="-10" FontSize="9" FontAttributes="Bold"
+                   TextColor="#FFFFFF70"
+                   HorizontalOptions="End" VerticalOptions="End"
+                   Margin="0,0,0,0" />
+
+            <!-- Touch overlay (must be last) -->
             <Grid x:Name="TouchOverlay"
                   BackgroundColor="Transparent"
+                  InputTransparent="False"
                   HorizontalOptions="Fill"
-                  VerticalOptions="Fill"
-                  InputTransparent="False">
-                <Grid.GestureRecognizers>
-                    <PanGestureRecognizer PanUpdated="OnPanUpdated" />
-                    <TapGestureRecognizer Tapped="OnTapped" />
-                </Grid.GestureRecognizers>
-            </Grid>
+                  VerticalOptions="Fill" />
+
         </Grid>
 
         <!-- Parameter Name -->
