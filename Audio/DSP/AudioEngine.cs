@@ -56,8 +56,7 @@ public class AudioEngine
     private volatile float _masterGainValue = 1.0f; // LOCK-FREE: Atomic read/write
 
     // Noise reduction (global effect, always present but can be bypassed)
-    // TODO: Implement NoiseReductionEffect
-    // private NoiseReductionEffect _noiseReduction;
+    private NoiseReductionEffect _noiseReduction;
     private volatile bool _noiseReductionEnabled; // LOCK-FREE: Atomic read/write
 
     // Master post-processing EQ + distortion (user-tweakable in real-time)
@@ -75,8 +74,7 @@ public class AudioEngine
         _isInitialized = false;
         _masterGain = new GainEffect();
         _masterEQ = new ThreeBandEQEffect();
-        // TODO: Implement NoiseReductionEffect
-        // _noiseReduction = new NoiseReductionEffect();
+        _noiseReduction = new NoiseReductionEffect();
         _noiseReductionEnabled = true; // Enabled by default
 
         // Initialize preset registry with refactored presets
@@ -137,8 +135,7 @@ public class AudioEngine
             MidGainDb = 0f, MidFreq = 1000f, MidQ = 1.0f,
             HighGainDb = 0f, HighFreq = 5000f
         });
-        // TODO: Implement NoiseReductionEffect
-        // _noiseReduction.Prepare(sampleRate);
+        _noiseReduction.Prepare(sampleRate);
         _isInitialized = true;
     }
 
@@ -171,11 +168,10 @@ public class AudioEngine
 
         // Apply noise reduction SECOND (after input gain, before effects)
         // This removes background noise before it gets amplified by effects
-        // TODO: Implement NoiseReductionEffect
-        // if (_noiseReductionEnabled)
-        // {
-        //     _noiseReduction.Process(buffer, offset, count);
-        // }
+        if (_noiseReductionEnabled)
+        {
+            _noiseReduction.Process(buffer, offset, count);
+        }
 
         // Snapshot the chain reference (volatile read, lock-free)
         var chain = _effectChain;
@@ -291,8 +287,7 @@ public class AudioEngine
     public void Reset()
     {
         _effectChain.Reset();
-        // TODO: Implement NoiseReductionEffect
-        // _noiseReduction.Reset();
+        _noiseReduction.Reset();
         _totalSamplesProcessed = 0;
     }
 
@@ -336,12 +331,11 @@ public class AudioEngine
         _noiseReductionEnabled = enabled;
         System.Diagnostics.Debug.WriteLine($"[AudioEngine] Noise reduction {(enabled ? "ENABLED" : "DISABLED")}");
 
-        // Reset noise reduction state when toggling
-        // TODO: Implement NoiseReductionEffect
-        // if (!enabled)
-        // {
-        //     _noiseReduction.Reset();
-        // }
+        // Reset noise profile when re-enabling so it re-learns the current environment
+        if (enabled)
+        {
+            _noiseReduction.ResetNoiseProfile();
+        }
     }
 
     /// <summary>

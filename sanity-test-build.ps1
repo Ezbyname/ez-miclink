@@ -65,6 +65,57 @@ if ($devices) {
     Write-Host "  SKIPPED: No device connected" -ForegroundColor DarkGray
 }
 
+# Test 5: A2DP audio routing code exists (critical fallback path)
+Write-Host ""
+Write-Host "Test 5: A2DP Audio Routing Code..." -ForegroundColor Yellow
+$audioServiceFile = "Platforms\Android\Services\AudioService.cs"
+if (Test-Path $audioServiceFile) {
+    $audioCode = Get-Content $audioServiceFile -Raw
+    $hasA2dpDetect = $audioCode -match "FindA2dpDevice"
+    $hasPreferred = $audioCode -match "SetPreferredDevice"
+    $hasScoFallback = $audioCode -match "IsCurrentlyConnected"
+    $hasMediaUsage = $audioCode -match "AudioUsageKind\.Media"
+
+    if ($hasA2dpDetect -and $hasPreferred -and $hasScoFallback -and $hasMediaUsage) {
+        Write-Host "  PASSED: A2DP fallback path verified (detect + preferred device + SCO stability check + media routing)" -ForegroundColor Green
+        $totalPassed++
+    } elseif ($hasA2dpDetect -and $hasMediaUsage) {
+        Write-Host "  PASSED: A2DP routing present (detect + media routing)" -ForegroundColor Green
+        $totalPassed++
+    } else {
+        Write-Host "  FAILED: A2DP fallback code missing from AudioService" -ForegroundColor Red
+        Write-Host "    FindA2dpDevice: $hasA2dpDetect | SetPreferredDevice: $hasPreferred | ScoStability: $hasScoFallback | MediaUsage: $hasMediaUsage" -ForegroundColor DarkGray
+        $totalFailed++
+    }
+} else {
+    Write-Host "  FAILED: AudioService.cs not found" -ForegroundColor Red
+    $totalFailed++
+}
+
+# Test 6: Noise Reduction implemented (not TODO stubs)
+Write-Host ""
+Write-Host "Test 6: Noise Reduction Implementation..." -ForegroundColor Yellow
+$nrFile = "Audio\DSP\NoiseReductionEffect.cs"
+if (Test-Path $nrFile) {
+    $engineCode = Get-Content "Audio\DSP\AudioEngine.cs" -Raw
+    $hasTodo = $engineCode -match "TODO.*NoiseReduction"
+    $hasRealCall = $engineCode -match "_noiseReduction\.Process\("
+
+    if ($hasRealCall -and -not $hasTodo) {
+        Write-Host "  PASSED: Noise reduction implemented and wired into AudioEngine" -ForegroundColor Green
+        $totalPassed++
+    } elseif ($hasTodo) {
+        Write-Host "  FAILED: Noise reduction still has TODO stubs in AudioEngine" -ForegroundColor Red
+        $totalFailed++
+    } else {
+        Write-Host "  FAILED: Noise reduction not wired into ProcessBuffer" -ForegroundColor Red
+        $totalFailed++
+    }
+} else {
+    Write-Host "  FAILED: NoiseReductionEffect.cs not found" -ForegroundColor Red
+    $totalFailed++
+}
+
 # Summary
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Cyan

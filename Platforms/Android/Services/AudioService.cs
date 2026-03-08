@@ -24,6 +24,8 @@ public class AudioService : IAudioService
     private bool _buffersFromPool = false;
     private ScoConnectionReceiver? _scoReceiver;
     private bool _disposed = false;
+    private bool _usingSco = false; // true=SCO (headset), false=A2DP (speaker)
+    private AudioDeviceInfo? _a2dpDevice = null; // cached A2DP device for SetPreferredDevice
 
     public bool IsRouting => _isRouting;
 
@@ -65,32 +67,69 @@ public class AudioService : IAudioService
                 System.Diagnostics.Debug.WriteLine("[AudioService] Foreground service started");
             }
 
-            // Set audio mode to communication
+            // Detect Bluetooth audio routing: try SCO first, fall back to A2DP
+            _usingSco = false;
             if (_audioManager != null)
             {
-                _audioManager.Mode = Mode.InCommunication;
+                // First try SCO (for headsets/hands-free devices)
+                bool scoAvailable = _audioManager.IsBluetoothScoAvailableOffCall;
+                System.Diagnostics.Debug.WriteLine($"[AudioService] Bluetooth SCO available: {scoAvailable}");
 
-                // Register SCO connection receiver
-                _scoReceiver = new ScoConnectionReceiver();
-                var intentFilter = new IntentFilter();
-                intentFilter.AddAction(AudioManager.ActionScoAudioStateUpdated);
-                Platform.CurrentActivity?.RegisterReceiver(_scoReceiver, intentFilter);
-
-                // Start Bluetooth SCO
-                _audioManager.StartBluetoothSco();
-
-                // Wait for SCO connection (up to 3 seconds)
-                System.Diagnostics.Debug.WriteLine("[AudioService] Waiting for Bluetooth SCO connection...");
-                bool scoConnected = await _scoReceiver.WaitForConnectionAsync(3000).ConfigureAwait(false);
-
-                if (!scoConnected)
+                if (scoAvailable)
                 {
-                    System.Diagnostics.Debug.WriteLine("[AudioService] WARNING: Bluetooth SCO did not connect, audio may route to phone speaker");
-                    StatusChanged?.Invoke(this, "Warning: Bluetooth audio connection delayed");
+                    _audioManager.Mode = Mode.InCommunication;
+
+                    _scoReceiver = new ScoConnectionReceiver();
+                    var intentFilter = new IntentFilter();
+                    intentFilter.AddAction(AudioManager.ActionScoAudioStateUpdated);
+                    Platform.CurrentActivity?.RegisterReceiver(_scoReceiver, intentFilter);
+
+                    _audioManager.StartBluetoothSco();
+
+                    System.Diagnostics.Debug.WriteLine("[AudioService] Waiting for Bluetooth SCO connection...");
+                    bool scoConnected = await _scoReceiver.WaitForConnectionAsync(3000).ConfigureAwait(false);
+
+                    if (scoConnected)
+                    {
+                        // SCO reported connected - verify it stays connected (some devices connect briefly then drop)
+                        System.Diagnostics.Debug.WriteLine("[AudioService] SCO connected, verifying stability (500ms)...");
+                        await Task.Delay(500).ConfigureAwait(false);
+
+                        if (_scoReceiver.IsCurrentlyConnected)
+                        {
+                            _usingSco = true;
+                            System.Diagnostics.Debug.WriteLine("[AudioService] SCO stable - using headset/hands-free routing");
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.WriteLine("[AudioService] SCO dropped after connecting - device doesn't support sustained SCO");
+                            scoConnected = false;
+                        }
+                    }
+
+                    if (!scoConnected)
+                    {
+                        // SCO failed or unstable - clean up and fall back to A2DP
+                        System.Diagnostics.Debug.WriteLine("[AudioService] SCO not usable - falling back to A2DP");
+                        _audioManager.StopBluetoothSco();
+                        _audioManager.Mode = Mode.Normal;
+                        DisposeScoReceiver();
+                    }
                 }
-                else
+
+                // If SCO didn't work, check for A2DP
+                if (!_usingSco)
                 {
-                    System.Diagnostics.Debug.WriteLine("[AudioService] Bluetooth SCO connected successfully");
+                    _a2dpDevice = FindA2dpDevice();
+                    if (_a2dpDevice != null)
+                    {
+                        _audioManager.Mode = Mode.Normal;
+                        System.Diagnostics.Debug.WriteLine($"[AudioService] A2DP device found: {_a2dpDevice.ProductName} - using media/speaker routing");
+                    }
+                    else
+                    {
+                        System.Diagnostics.Debug.WriteLine("[AudioService] WARNING: No Bluetooth audio device detected, output goes to phone speaker");
+                    }
                 }
             }
 
@@ -101,17 +140,13 @@ public class AudioService : IAudioService
 
             int minBufferSize = AudioRecord.GetMinBufferSize(sampleRate, channelConfig, audioFormat);
 
+            string outputTarget = _usingSco ? "Bluetooth Headset (via SCO)" : "Bluetooth Speaker (via A2DP)";
             System.Diagnostics.Debug.WriteLine("[AudioService] ╔══════════════════════════════════════════╗");
             System.Diagnostics.Debug.WriteLine("[AudioService] ║   AUDIO ROUTING CONFIGURATION           ║");
             System.Diagnostics.Debug.WriteLine("[AudioService] ╚══════════════════════════════════════════╝");
             System.Diagnostics.Debug.WriteLine("[AudioService] ");
             System.Diagnostics.Debug.WriteLine("[AudioService] INPUT SOURCE:  Phone Microphone (AudioSource.Mic)");
-            System.Diagnostics.Debug.WriteLine("[AudioService] OUTPUT TARGET: Bluetooth Speaker (via SCO)");
-            System.Diagnostics.Debug.WriteLine("[AudioService] ");
-            System.Diagnostics.Debug.WriteLine("[AudioService] Audio Flow:");
-            System.Diagnostics.Debug.WriteLine("[AudioService]   1. Capture from Phone Mic");
-            System.Diagnostics.Debug.WriteLine("[AudioService]   2. Process with DSP Effects");
-            System.Diagnostics.Debug.WriteLine("[AudioService]   3. Output to Bluetooth Speaker");
+            System.Diagnostics.Debug.WriteLine($"[AudioService] OUTPUT TARGET: {outputTarget}");
             System.Diagnostics.Debug.WriteLine("[AudioService] ");
 
             _audioRecord = new AudioRecord(
@@ -124,21 +159,47 @@ public class AudioService : IAudioService
 
             System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AudioRecord created: Capturing from phone microphone");
 
-            // Configure audio playback through Bluetooth
-            _audioTrack = new AudioTrack.Builder()
-                .SetAudioAttributes(new AudioAttributes.Builder()
-                    .SetUsage(AudioUsageKind.VoiceCommunication)  // ← Routes to Bluetooth when SCO active
-                    .SetContentType(AudioContentType.Speech)
-                    .Build())
-                .SetAudioFormat(new AudioFormat.Builder()
-                    .SetEncoding(Encoding.Pcm16bit)
-                    .SetSampleRate(sampleRate)
-                    .SetChannelMask(ChannelOut.Mono)
-                    .Build())
-                .SetBufferSizeInBytes(minBufferSize * 2)
-                .Build();
+            // Configure audio playback - different attributes for SCO vs A2DP
+            if (_usingSco)
+            {
+                _audioTrack = new AudioTrack.Builder()
+                    .SetAudioAttributes(new AudioAttributes.Builder()
+                        .SetUsage(AudioUsageKind.VoiceCommunication)
+                        .SetContentType(AudioContentType.Speech)
+                        .Build())
+                    .SetAudioFormat(new AudioFormat.Builder()
+                        .SetEncoding(Encoding.Pcm16bit)
+                        .SetSampleRate(sampleRate)
+                        .SetChannelMask(ChannelOut.Mono)
+                        .Build())
+                    .SetBufferSizeInBytes(minBufferSize * 2)
+                    .Build();
+            }
+            else
+            {
+                // A2DP: use Media usage so Android routes to the connected A2DP speaker
+                _audioTrack = new AudioTrack.Builder()
+                    .SetAudioAttributes(new AudioAttributes.Builder()
+                        .SetUsage(AudioUsageKind.Media)
+                        .SetContentType(AudioContentType.Music)
+                        .Build())
+                    .SetAudioFormat(new AudioFormat.Builder()
+                        .SetEncoding(Encoding.Pcm16bit)
+                        .SetSampleRate(sampleRate)
+                        .SetChannelMask(ChannelOut.Mono)
+                        .Build())
+                    .SetBufferSizeInBytes(minBufferSize * 2)
+                    .Build();
+            }
 
-            System.Diagnostics.Debug.WriteLine("[AudioService] ✓ AudioTrack created: Will output to Bluetooth speaker (via SCO)");
+            System.Diagnostics.Debug.WriteLine($"[AudioService] ✓ AudioTrack created: {outputTarget}");
+
+            // For A2DP: explicitly route AudioTrack to the BT device (replaces deprecated BluetoothA2dpOn)
+            if (!_usingSco && _a2dpDevice != null)
+            {
+                bool preferred = _audioTrack.SetPreferredDevice(_a2dpDevice);
+                System.Diagnostics.Debug.WriteLine($"[AudioService] SetPreferredDevice(A2DP): {preferred}");
+            }
 
             // Initialize audio engine
             _audioEngine.Initialize(sampleRate);
@@ -184,7 +245,8 @@ public class AudioService : IAudioService
             // Set Android native thread priority to URGENT_AUDIO
             SetThreadPriorityAndroid();
 
-            StatusChanged?.Invoke(this, "Routing: Phone Mic → Bluetooth Speaker");
+            string routeLabel = _usingSco ? "Bluetooth Headset" : "Bluetooth Speaker";
+            StatusChanged?.Invoke(this, $"Routing: Phone Mic → {routeLabel}");
 
             return true; // ✅ No fake async wrapper
         }
@@ -223,8 +285,10 @@ public class AudioService : IAudioService
 
             if (_audioManager != null)
             {
-                _audioManager.StopBluetoothSco();
+                if (_usingSco)
+                    _audioManager.StopBluetoothSco();
                 _audioManager.Mode = Mode.Normal;
+                _usingSco = false;
             }
 
             // Stop foreground service
@@ -261,15 +325,16 @@ public class AudioService : IAudioService
             {
                 try
                 {
-                    // Get max volume for voice call stream
-                    int maxVolume = _audioManager.GetStreamMaxVolume(global::Android.Media.Stream.VoiceCall);
+                    // Use correct stream based on routing mode
+                    var stream = _usingSco ? global::Android.Media.Stream.VoiceCall : global::Android.Media.Stream.Music;
+                    int maxVolume = _audioManager.GetStreamMaxVolume(stream);
 
                     // Set system volume to maximum when volume > 0, to ensure strong output
                     // We control actual volume via digital gain in the audio engine
                     int systemVolume = volume > 0.05 ? maxVolume : 0;
 
                     // Set the system volume (without showing UI to avoid spam)
-                    _audioManager.SetStreamVolume(global::Android.Media.Stream.VoiceCall, systemVolume, VolumeNotificationFlags.RemoveSoundAndVibrate);
+                    _audioManager.SetStreamVolume(stream, systemVolume, VolumeNotificationFlags.RemoveSoundAndVibrate);
 
                     System.Diagnostics.Debug.WriteLine($"[AudioService] System volume set to {systemVolume}/{maxVolume} (MAX)");
                 }
@@ -495,6 +560,37 @@ public class AudioService : IAudioService
         }
     }
 
+    /// <summary>
+    /// Find a connected A2DP (media audio) Bluetooth device for explicit routing.
+    /// Returns the AudioDeviceInfo for use with SetPreferredDevice().
+    /// </summary>
+    private AudioDeviceInfo? FindA2dpDevice()
+    {
+        try
+        {
+            if (_audioManager == null) return null;
+
+            var devices = _audioManager.GetDevices(GetDevicesTargets.Outputs);
+            if (devices == null) return null;
+
+            foreach (var device in devices)
+            {
+                if (device.Type == AudioDeviceType.BluetoothA2dp)
+                {
+                    System.Diagnostics.Debug.WriteLine($"[AudioService] Found A2DP device: {device.ProductName} (id={device.Id})");
+                    return device;
+                }
+            }
+
+            return null;
+        }
+        catch (Exception ex)
+        {
+            System.Diagnostics.Debug.WriteLine($"[AudioService] Error finding A2DP device: {ex.Message}");
+            return null;
+        }
+    }
+
     #region IDisposable Implementation
 
     /// <summary>
@@ -547,8 +643,10 @@ public class AudioService : IAudioService
                 {
                     try
                     {
-                        _audioManager.StopBluetoothSco();
+                        if (_usingSco)
+                            _audioManager.StopBluetoothSco();
                         _audioManager.Mode = Mode.Normal;
+                        _usingSco = false;
                     }
                     catch (Exception ex)
                     {
@@ -680,6 +778,12 @@ public class AudioService : IAudioService
     {
         private TaskCompletionSource<bool>? _connectionTask;
         private readonly object _lock = new object();
+        private volatile bool _isConnected = false;
+
+        /// <summary>
+        /// True if the last SCO state was Connected (tracks live state, not just first connect).
+        /// </summary>
+        public bool IsCurrentlyConnected => _isConnected;
 
         public override void OnReceive(Context? context, Intent? intent)
         {
@@ -688,6 +792,8 @@ public class AudioService : IAudioService
 
             int state = intent.GetIntExtra(AudioManager.ExtraScoAudioState, -1);
             System.Diagnostics.Debug.WriteLine($"[ScoReceiver] SCO state changed: {state}");
+
+            _isConnected = state == (int)ScoAudioState.Connected;
 
             lock (_lock)
             {
