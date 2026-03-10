@@ -8,6 +8,10 @@ on:
   # Allow manual trigger for testing
   workflow_dispatch:
 
+permissions:
+  contents: write
+  issues: write
+
 jobs:
   discover-and-email:
     runs-on: ubuntu-latest
@@ -118,12 +122,31 @@ jobs:
 
             🤖 _Automated by Voice Discovery Bot_`;
 
+            // Create labels if they don't exist
+            const labels = ['voice-discovery', 'automation', 'discovered-effects'];
+            for (const label of labels) {
+              try {
+                await github.rest.issues.getLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label
+                });
+              } catch {
+                await github.rest.issues.createLabel({
+                  owner: context.repo.owner,
+                  repo: context.repo.repo,
+                  name: label,
+                  color: 'ededed'
+                });
+              }
+            }
+
             await github.rest.issues.create({
               owner: context.repo.owner,
               repo: context.repo.repo,
               title: '🎤 Voice Effect Discovery - ${{ steps.discovery.outputs.report_date }}',
               body: issueBody,
-              labels: ['voice-discovery', 'automation', 'discovered-effects']
+              labels: labels
             });
 
       - name: Summary
