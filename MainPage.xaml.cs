@@ -685,15 +685,7 @@ public partial class MainPage : ContentPage
 			System.Diagnostics.Debug.WriteLine("[MainPage] ========== SCAN START ==========");
 			System.Diagnostics.Debug.WriteLine("[MainPage] ==========================================");
 
-			// Show loading and Stop Scanning button
-			ScanButton.IsEnabled = false;
-			// TODO: StopScanButton was removed
-			// StopScanButton.IsVisible = true;
-
-			// Start scanning animations
-			StartScanningAnimations();
-
-			// Check and request Bluetooth permissions
+			// Check and request Bluetooth permissions BEFORE starting animations
 			System.Diagnostics.Debug.WriteLine("[MainPage] ========== PERMISSION CHECK START ==========");
 			var hasPermissions = await CheckBluetoothPermissionsAsync();
 			System.Diagnostics.Debug.WriteLine($"[MainPage] Permission check result: {hasPermissions}");
@@ -706,25 +698,31 @@ public partial class MainPage : ContentPage
 				return;
 			}
 
-			// Check if scanning was cancelled
-			if (_scanningCts?.Token.IsCancellationRequested == true)
-			{
-				System.Diagnostics.Debug.WriteLine("[MainPage] ❌ SCAN CANCELLED by user");
-				return;
-			}
-
 			System.Diagnostics.Debug.WriteLine("[MainPage] ✅ Permissions granted, proceeding with scan");
 
-			// Check if Bluetooth is enabled
+			// Check if Bluetooth is enabled BEFORE starting scan animations
 			if (!_bluetoothService.IsBluetoothEnabled())
 			{
 				System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth is OFF, asking user for permission to enable");
 
-				var enableBluetooth = await DialogService.ShowConfirmationAsync(
-					"Bluetooth is Off",
-					"Bluetooth is currently turned off. Would you like to turn it on?",
-					confirmText: "Turn On",
-					cancelText: "Cancel");
+				// Pause the Bluetooth monitor so it doesn't race with this dialog
+				StopBluetoothMonitoring();
+				_isShowingBluetoothDialog = true;
+
+				bool enableBluetooth;
+				try
+				{
+					enableBluetooth = await DialogService.ShowConfirmationAsync(
+						"Bluetooth is Off",
+						"Bluetooth is currently turned off. Would you like to turn it on?",
+						confirmText: "Turn On",
+						cancelText: "Cancel");
+				}
+				finally
+				{
+					_isShowingBluetoothDialog = false;
+					StartBluetoothMonitoring();
+				}
 
 				if (enableBluetooth)
 				{
@@ -747,22 +745,32 @@ public partial class MainPage : ContentPage
 					}
 
 					System.Diagnostics.Debug.WriteLine("[MainPage] Bluetooth enabled successfully");
+					// Brief delay to let Bluetooth settle before scanning
+					await Task.Delay(500);
 				}
 				else
 				{
 					System.Diagnostics.Debug.WriteLine("[MainPage] User declined to enable Bluetooth");
-					await DialogService.ShowInfoAsync(
-						"Bluetooth Required",
-						"Bluetooth must be enabled to scan for devices. Please enable it manually from Settings.",
+					await DialogService.ShowWarningAsync(
+						"Bluetooth Disabled",
+						"Bluetooth has been turned off. Please enable it to scan for devices.",
 						new List<string>
 						{
 							"Go to Settings → Bluetooth",
 							"Turn on Bluetooth",
-							"Return to the app and try again"
+							"Return to the app to scan"
 						});
 					return;
 				}
 			}
+
+			// Show loading and Stop Scanning button
+			ScanButton.IsEnabled = false;
+			// TODO: StopScanButton was removed
+			// StopScanButton.IsVisible = true;
+
+			// Start scanning animations only after Bluetooth is confirmed on
+			StartScanningAnimations();
 
 			// Check if scanning was cancelled
 			if (_scanningCts?.Token.IsCancellationRequested == true)

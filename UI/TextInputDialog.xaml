@@ -9,7 +9,7 @@
 
     <!-- Full Screen Overlay - Dark backdrop -->
     <Grid x:Name="OverlayGrid"
-          BackgroundColor="#CC000000"
+          BackgroundColor="#FF000000"
           IsVisible="False"
           InputTransparent="False">
 
@@ -31,7 +31,7 @@
                     InputTransparent="False">
 
                 <Border.Background>
-                    <SolidColorBrush Color="#33FFFFFF" />
+                    <SolidColorBrush Color="#1A1A2E" />
             </Border.Background>
 
             <Border.Stroke>
