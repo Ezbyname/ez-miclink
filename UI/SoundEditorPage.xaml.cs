@@ -7,6 +7,7 @@ public partial class SoundEditorPage : ContentPage
 	private readonly IAudioService _audioService;
 	private readonly string _presetName;
 	private readonly string _displayName;
+	private readonly string _basePresetName;
 
 	private bool _isModified;
 	private bool _isUpdating;
@@ -21,16 +22,17 @@ public partial class SoundEditorPage : ContentPage
 	private float _defaultBright;
 	private float _defaultCharacter;
 
-	public SoundEditorPage(IAudioService audioService, string presetName, string displayName)
+	public SoundEditorPage(IAudioService audioService, string presetName, string displayName, string? basePresetName = null)
 	{
 		InitializeComponent();
 
 		_audioService = audioService;
 		_presetName = presetName;
 		_displayName = displayName;
+		_basePresetName = basePresetName ?? presetName;
 
 		PresetNameLabel.Text = displayName;
-		PresetSubtitle.Text = $"Based on: {displayName}";
+		PresetSubtitle.Text = $"Based on: {_basePresetName}";
 
 		LoadPresetDefaults();
 		ApplyDefaultsToUi();
@@ -165,7 +167,7 @@ public partial class SoundEditorPage : ContentPage
 		var customSound = new CustomSound
 		{
 			Name = name.Trim(),
-			BasePreset = _presetName,
+			BasePreset = _basePresetName,
 			Bass = (float)ToneSlider.Value,
 			Mid = (float)SpaceSlider.Value,
 			Treble = (float)BrightSlider.Value,

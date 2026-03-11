@@ -160,8 +160,9 @@ public partial class SavedSoundsPage : ContentPage
 			_audioService.SetMasterEQ(sound.Bass, sound.Mid, sound.Treble);
 			_audioService.SetMasterDistortion(sound.Distortion / 10f);
 
-			// Navigate to editor with the values loaded
-			var editor = new SoundEditorPage(_audioService, sound.BasePreset, sound.Name);
+			// Navigate to editor with the original base preset (not the saved name)
+			// so that Reset and re-Save preserve the correct base preset
+			var editor = new SoundEditorPage(_audioService, sound.BasePreset, sound.Name, sound.BasePreset);
 			editor.LoadCustomValues(sound.Bass, sound.Mid, sound.Treble, sound.Distortion);
 			await Navigation.PushAsync(editor);
 		}
