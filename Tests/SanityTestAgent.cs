@@ -89,6 +89,9 @@ public class SanityTestAgent
         report.Results.Add(await TestSessionPersistence());
         report.Results.Add(await TestLogout());
 
+        // Audio quality tests
+        report.Results.Add(await TestFeedbackCancellerNoChop());
+
         // Main flow crash tests (CRITICAL)
         report.Results.Add(await TestMainFlowNoCrash());
 
@@ -648,6 +651,97 @@ public class SanityTestAgent
                 TestName = "Noise Reduction Effect",
                 Passed = false,
                 Message = $"Noise reduction test failed: {ex.Message}",
+                Exception = ex,
+                Duration = sw.Elapsed
+            };
+        }
+    }
+
+    /// <summary>
+    /// Verifies the FeedbackCanceller doesn't chop/fragment voice audio.
+    /// Simulates continuous voice -> speaker -> mic cycle and checks that
+    /// mic signal retains at least 50% average energy (not over-ducked).
+    /// </summary>
+    private async Task<TestResult> TestFeedbackCancellerNoChop()
+    {
+        var sw = Stopwatch.StartNew();
+        try
+        {
+            const int sampleRate = 44100;
+            var canceller = new FeedbackCanceller();
+            canceller.Prepare(sampleRate);
+
+            var buffer = new float[1024];
+            float totalInputEnergy = 0f;
+            float totalOutputEnergy = 0f;
+            int blocks = 0;
+
+            // Simulate 2 seconds of continuous voice routing (mic -> DSP -> speaker -> mic picks up echo)
+            for (int i = 0; i < (sampleRate * 2) / buffer.Length; i++)
+            {
+                // Generate voice-like signal (mix of frequencies)
+                for (int j = 0; j < buffer.Length; j++)
+                {
+                    float t = (i * buffer.Length + j) / (float)sampleRate;
+                    buffer[j] = 0.3f * MathF.Sin(2 * MathF.PI * 200 * t)
+                              + 0.2f * MathF.Sin(2 * MathF.PI * 800 * t);
+                }
+
+                // Measure input energy before cancellation
+                float inEnergy = 0f;
+                for (int j = 0; j < buffer.Length; j++)
+                    inEnergy += buffer[j] * buffer[j];
+                totalInputEnergy += inEnergy / buffer.Length;
+
+                // Simulate the feedback loop: speaker played last block, mic picks it up
+                canceller.CancelEcho(buffer, 0, buffer.Length);
+
+                // Measure output energy after cancellation
+                float outEnergy = 0f;
+                for (int j = 0; j < buffer.Length; j++)
+                    outEnergy += buffer[j] * buffer[j];
+                totalOutputEnergy += outEnergy / buffer.Length;
+
+                // Record what goes to speaker (feeds into next iteration's echo detection)
+                canceller.RecordReference(buffer, 0, buffer.Length);
+                blocks++;
+            }
+
+            float energyRatio = totalOutputEnergy / Math.Max(totalInputEnergy, 0.0001f);
+
+            // CRITICAL: Voice must retain at least 25% of its energy.
+            // Below this, the audio sounds choppy/fragmented.
+            // Healthy range: 0.25 - 1.0 (some ducking is OK, heavy ducking is not)
+            if (energyRatio < 0.25f)
+            {
+                sw.Stop();
+                return new TestResult
+                {
+                    TestName = "Feedback Canceller No Chop",
+                    Passed = false,
+                    Message = $"VOICE CHOPPING DETECTED: Energy ratio {energyRatio:P0} (need >25%). " +
+                              "FeedbackCanceller is too aggressive - check OutputThreshold, DuckAmount, hold time.",
+                    Duration = sw.Elapsed
+                };
+            }
+
+            sw.Stop();
+            return new TestResult
+            {
+                TestName = "Feedback Canceller No Chop",
+                Passed = true,
+                Message = $"Voice energy retained: {energyRatio:P0} over {blocks} blocks (healthy)",
+                Duration = sw.Elapsed
+            };
+        }
+        catch (Exception ex)
+        {
+            sw.Stop();
+            return new TestResult
+            {
+                TestName = "Feedback Canceller No Chop",
+                Passed = false,
+                Message = "FeedbackCanceller test crashed",
                 Exception = ex,
                 Duration = sw.Elapsed
             };

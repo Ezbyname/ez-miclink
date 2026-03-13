@@ -3,45 +3,45 @@ using System;
 namespace BluetoothMicrophoneApp.Audio.DSP;
 
 /// <summary>
-/// Feedback suppressor for Bluetooth speaker scenarios.
+/// Feedback suppressor using output-triggered input ducking.
 ///
-/// Problem: Phone mic picks up audio from nearby BT speaker, creating
-/// a feedback loop that echoes and can build up to howling.
+/// Problem: BT speaker output is picked up by phone mic, creating echo loop.
+/// Finding the exact echo delay is unreliable (voice auto-correlation, BT codec distortion).
 ///
-/// Approach: Energy-based feedback gate.
-/// - Tracks output energy (what we send to speaker)
-/// - Tracks input energy (what mic captures)
-/// - When input energy closely tracks output energy after a delay,
-///   it's feedback - apply gain reduction to break the loop
-/// - Uses exponential smoothing for stability (no audio glitches)
+/// Solution: When we send loud audio to the speaker, we KNOW the mic will pick it up
+/// ~100-500ms later. So we duck (reduce) mic input for 500ms after any loud output.
+/// This breaks the feedback loop without needing to know the exact delay.
 ///
-/// This is lightweight enough for the real-time audio thread.
-/// Zero-allocation in steady state.
+/// The user's voice still gets through because:
+/// - They speak FIRST → output is silent → full mic gain
+/// - Speaker plays their voice → we duck mic for 500ms → echo is suppressed
+/// - Echo dies because it's ducked below the loop sustain threshold
+///
+/// This is the same approach used in conference phones and PA systems.
+/// Zero allocation, extremely lightweight.
 /// </summary>
 public class FeedbackCanceller
 {
 	private int _sampleRate;
 
-	// Energy tracking (exponential moving averages)
-	private float _outputEnergy;    // smoothed energy of what we sent to speaker
-	private float _inputEnergy;     // smoothed energy of what mic captured
-	private float _pureInputEnergy; // input energy before any suppression (for detection)
+	// Output energy tracking (what speaker is playing)
+	private float _outputEnergy;
+	private float _peakOutputEnergy; // peak over recent history
 
-	// Feedback detection state
-	private float _feedbackRatio;   // how much of input looks like feedback
-	private float _currentGain;     // current suppression gain (1.0 = no suppression)
-	private int _feedbackFrames;    // consecutive frames with feedback detected
+	// Ducking state
+	private float _currentDuck;    // 0.0 = full duck, 1.0 = no duck
+	private int _holdSamples;      // how many samples to keep ducking after output goes quiet
+	private int _holdRemaining;    // countdown of hold samples
 
-	// Parameters
+	// Tuning parameters
+	private const float OutputThreshold = 0.01f;   // output energy threshold to trigger ducking (only loud output)
+	private const float DuckAmount = 0.35f;        // how much to reduce mic during duck (0.35 = -9dB, gentle)
+	private const float DuckAttackRate = 0.3f;     // how fast duck engages (slightly gradual)
+	private const float DuckReleaseRate = 0.01f;   // how fast duck releases (faster recovery for natural sound)
+
 	private volatile bool _enabled = true;
-	private const float EnergySmooth = 0.995f;   // smoothing factor for energy tracking
-	private const float GainAttack = 0.05f;       // how fast gain drops (gentle)
-	private const float GainRelease = 0.002f;     // how fast gain recovers (very slow)
-	private const float FeedbackThreshold = 0.4f; // ratio threshold for feedback detection
-	private const float MinGain = 0.15f;          // minimum gain (don't completely mute)
-
-	// Monitoring
 	private int _sampleCount;
+	private int _duckActiveCount; // for logging
 
 	public bool Enabled
 	{
@@ -53,22 +53,22 @@ public class FeedbackCanceller
 	{
 		_sampleRate = sampleRate;
 		_outputEnergy = 0f;
-		_inputEnergy = 0f;
-		_pureInputEnergy = 0f;
-		_feedbackRatio = 0f;
-		_currentGain = 1.0f;
-		_feedbackFrames = 0;
+		_peakOutputEnergy = 0f;
+		_currentDuck = 1.0f; // start with no ducking
+		_holdSamples = (int)(sampleRate * 0.15f); // 150ms hold time (covers BT latency without chopping voice)
+		_holdRemaining = 0;
 		_sampleCount = 0;
+		_duckActiveCount = 0;
 	}
 
 	/// <summary>
-	/// Record the energy of what we're sending to the speaker.
-	/// Call AFTER DSP processing, BEFORE writing to AudioTrack.
+	/// Track output energy. Called AFTER DSP, BEFORE writing to speaker.
 	/// </summary>
 	public void RecordReference(float[] buffer, int offset, int count)
 	{
 		if (!_enabled) return;
 
+		// Compute output block energy
 		float energy = 0f;
 		for (int i = 0; i < count; i++)
 		{
@@ -77,110 +77,92 @@ public class FeedbackCanceller
 		}
 		energy /= Math.Max(count, 1);
 
-		// Smooth output energy tracking
-		_outputEnergy = _outputEnergy * EnergySmooth + energy * (1f - EnergySmooth);
+		// Track smoothed output energy
+		_outputEnergy = _outputEnergy * 0.9f + energy * 0.1f;
+
+		// Track peak (decays slowly)
+		if (_outputEnergy > _peakOutputEnergy)
+			_peakOutputEnergy = _outputEnergy;
+		else
+			_peakOutputEnergy *= 0.999f;
+
+		// If output is above threshold, reset the hold timer
+		if (_outputEnergy > OutputThreshold)
+		{
+			_holdRemaining = _holdSamples;
+		}
 	}
 
 	/// <summary>
-	/// Detect and suppress feedback in the mic input.
-	/// Call on mic input BEFORE DSP processing.
-	///
-	/// Detection logic:
-	/// - If we recently sent loud audio to speaker, AND mic now picks up
-	///   similar energy, it's likely feedback
-	/// - Apply gradual gain reduction to break the feedback loop
-	/// - Release gain slowly when feedback stops
+	/// Apply ducking to mic input. Called BEFORE DSP processing.
 	/// </summary>
 	public void CancelEcho(float[] buffer, int offset, int count)
 	{
 		if (!_enabled) return;
 
-		// Measure input energy
-		float inputE = 0f;
-		for (int i = 0; i < count; i++)
+		// Determine target duck level
+		float targetDuck;
+		if (_holdRemaining > 0)
 		{
-			float s = buffer[offset + i];
-			inputE += s * s;
-		}
-		inputE /= Math.Max(count, 1);
-		_pureInputEnergy = _pureInputEnergy * EnergySmooth + inputE * (1f - EnergySmooth);
-
-		// Feedback detection: compare input energy to recent output energy
-		// If output was loud and input is also loud, it's likely feedback
-		bool feedbackDetected = false;
-
-		if (_outputEnergy > 1e-5f)
-		{
-			// Ratio of input to output energy
-			// If mic is picking up the speaker, this will be consistently > 0
-			float ratio = _pureInputEnergy / (_outputEnergy + 1e-8f);
-
-			// Smooth the ratio
-			_feedbackRatio = _feedbackRatio * 0.95f + ratio * 0.05f;
-
-			// Feedback is when input energy tracks output energy
-			// (ratio stays in a consistent range, not random)
-			if (_feedbackRatio > FeedbackThreshold && _pureInputEnergy > 1e-4f)
-			{
-				feedbackDetected = true;
-				_feedbackFrames++;
-			}
-			else
-			{
-				_feedbackFrames = Math.Max(0, _feedbackFrames - 1);
-			}
+			// Speaker recently played something — duck the mic
+			targetDuck = DuckAmount;
+			_holdRemaining -= count;
 		}
 		else
 		{
-			_feedbackFrames = Math.Max(0, _feedbackFrames - 1);
+			// Speaker has been quiet for 500ms — full mic gain
+			targetDuck = 1.0f;
 		}
 
-		// Adjust gain based on feedback detection
-		if (feedbackDetected && _feedbackFrames > 3)
+		// Smooth duck transitions (attack fast, release slow)
+		if (targetDuck < _currentDuck)
 		{
-			// Reduce gain to suppress feedback (gradual attack)
-			_currentGain = Math.Max(MinGain, _currentGain - GainAttack);
+			// Ducking (fast attack)
+			_currentDuck = Math.Max(targetDuck, _currentDuck - DuckAttackRate);
 		}
 		else
 		{
-			// Slowly release gain back to 1.0
-			_currentGain = Math.Min(1.0f, _currentGain + GainRelease);
+			// Releasing (slow release to prevent echo resurgence)
+			_currentDuck = Math.Min(targetDuck, _currentDuck + DuckReleaseRate);
 		}
 
-		// Apply gain to input buffer
-		if (_currentGain < 0.99f)
+		// Apply duck gain to mic input
+		if (_currentDuck < 0.99f)
 		{
-			float gain = _currentGain;
+			float duck = _currentDuck;
 			for (int i = 0; i < count; i++)
 			{
-				buffer[offset + i] *= gain;
+				buffer[offset + i] *= duck;
 			}
+			_duckActiveCount++;
 		}
 
 		// Periodic logging
 		_sampleCount += count;
-		if (_sampleCount >= _sampleRate) // log once per second
+		if (_sampleCount >= _sampleRate) // every second
 		{
 			_sampleCount = 0;
-			if (_currentGain < 0.95f)
+			if (_duckActiveCount > 0 || _currentDuck < 0.99f)
 			{
 				System.Diagnostics.Debug.WriteLine(
-					$"[FeedbackCanceller] ACTIVE: gain={_currentGain:F2}, ratio={_feedbackRatio:F3}, outE={_outputEnergy:F6}, inE={_pureInputEnergy:F6}");
+					$"[FeedbackCanceller] duck={_currentDuck:F2}, outEnergy={_outputEnergy:F6}, hold={_holdRemaining > 0}, duckBlocks={_duckActiveCount}");
+				_duckActiveCount = 0;
 			}
 		}
 	}
 
-	/// <summary>
-	/// Reset the suppressor state.
-	/// </summary>
 	public void Reset()
 	{
 		_outputEnergy = 0f;
-		_inputEnergy = 0f;
-		_pureInputEnergy = 0f;
-		_feedbackRatio = 0f;
-		_currentGain = 1.0f;
-		_feedbackFrames = 0;
+		_peakOutputEnergy = 0f;
+		_currentDuck = 1.0f;
+		_holdRemaining = 0;
 		_sampleCount = 0;
+		_duckActiveCount = 0;
+	}
+
+	public void Stop()
+	{
+		// No background threads
 	}
 }

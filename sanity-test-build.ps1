@@ -116,6 +116,55 @@ if (Test-Path $nrFile) {
     $totalFailed++
 }
 
+# Test 7: FeedbackCanceller safe parameters (prevents voice chopping/fragmentation)
+Write-Host ""
+Write-Host "Test 7: Feedback Canceller Audio Quality..." -ForegroundColor Yellow
+$fcFile = "Audio\DSP\FeedbackCanceller.cs"
+if (Test-Path $fcFile) {
+    $fcCode = Get-Content $fcFile -Raw
+
+    # Extract tuning constants
+    $thresholdMatch = [regex]::Match($fcCode, 'OutputThreshold\s*=\s*([\d.]+)f')
+    $duckMatch = [regex]::Match($fcCode, 'DuckAmount\s*=\s*([\d.]+)f')
+    $holdMatch = [regex]::Match($fcCode, 'sampleRate\s*\*\s*([\d.]+)f\).*hold')
+
+    $failed = $false
+    $details = @()
+
+    if ($thresholdMatch.Success) {
+        $threshold = [float]$thresholdMatch.Groups[1].Value
+        if ($threshold -lt 0.001) {
+            $details += "OutputThreshold too low ($threshold) - will duck on silence"
+            $failed = $true
+        }
+    }
+    if ($duckMatch.Success) {
+        $duck = [float]$duckMatch.Groups[1].Value
+        if ($duck -lt 0.2) {
+            $details += "DuckAmount too aggressive ($duck) - voice will be chopped"
+            $failed = $true
+        }
+    }
+    if ($holdMatch.Success) {
+        $holdMs = [float]$holdMatch.Groups[1].Value * 1000
+        if ($holdMs -gt 300) {
+            $details += "Hold time too long (${holdMs}ms) - prolonged voice suppression"
+            $failed = $true
+        }
+    }
+
+    if (-not $failed) {
+        Write-Host "  PASSED: FeedbackCanceller parameters safe (threshold=$threshold, duck=$duck, hold=${holdMs}ms)" -ForegroundColor Green
+        $totalPassed++
+    } else {
+        Write-Host "  FAILED: FeedbackCanceller will cause fragmented audio" -ForegroundColor Red
+        foreach ($d in $details) { Write-Host "    $d" -ForegroundColor DarkGray }
+        $totalFailed++
+    }
+} else {
+    Write-Host "  SKIPPED: FeedbackCanceller.cs not found" -ForegroundColor DarkGray
+}
+
 # Summary
 Write-Host ""
 Write-Host "===============================================" -ForegroundColor Cyan
