@@ -372,9 +372,9 @@ public class AudioEngine
 
         _masterEQ.SetParameters(new ThreeBandEQEffect.ThreeBandEQParameters
         {
-            LowGainDb = _masterEQLow, LowFreq = 200f,
-            MidGainDb = _masterEQMid, MidFreq = 1000f, MidQ = 1.0f,
-            HighGainDb = _masterEQHigh, HighFreq = 5000f
+            LowGainDb = _masterEQLow, LowFreq = 150f,
+            MidGainDb = _masterEQMid, MidFreq = 2500f, MidQ = 1.5f,
+            HighGainDb = _masterEQHigh, HighFreq = 8000f
         });
     }
 

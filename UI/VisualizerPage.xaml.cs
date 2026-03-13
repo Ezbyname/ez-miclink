@@ -14,6 +14,7 @@ public partial class VisualizerPage : ContentPage
 		InitializeComponent();
 		_audioService = audioService;
 		_audioService.StatusChanged += OnAudioStatusChanged;
+		StopBar.Attach(_audioService);
 	}
 
 	private void OnAudioStatusChanged(object? sender, string status)
@@ -146,6 +147,7 @@ public partial class VisualizerPage : ContentPage
 	{
 		base.OnDisappearing();
 		StopAnimations();
+		StopBar.Detach();
 		_audioService.StatusChanged -= OnAudioStatusChanged;
 	}
 }

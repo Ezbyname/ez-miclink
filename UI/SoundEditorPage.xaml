@@ -14,176 +14,183 @@
         </LinearGradientBrush>
     </ContentPage.Background>
 
-    <VerticalStackLayout Spacing="12" Padding="16,8,16,16">
+    <Grid RowDefinitions="Auto,*">
 
-        <!-- Header -->
-        <VerticalStackLayout Spacing="4" Margin="0,8,0,0">
-            <Label x:Name="PresetNameLabel"
-                   Text="Sound Editor"
-                   FontSize="24"
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center" />
-            <Label x:Name="PresetSubtitle"
-                   Text="Adjust the sound to your liking"
-                   FontSize="12"
-                   TextColor="#8E8E93"
-                   HorizontalOptions="Center" />
-        </VerticalStackLayout>
+        <!-- Floating Stop Bar -->
+        <controls:FloatingStopBar x:Name="StopBar" Grid.Row="0" />
 
-        <!-- Mixer Panel -->
-        <Border BackgroundColor="#0D0D1A"
-                Stroke="#FFFFFF14"
-                StrokeThickness="1"
-                Padding="8,12"
-                Margin="0,4,0,0">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="20" />
-            </Border.StrokeShape>
+        <!-- Page Content -->
+        <VerticalStackLayout Grid.Row="1" Spacing="12" Padding="16,8,16,16">
 
-            <VerticalStackLayout Spacing="8">
-                <Label Text="SOUND MIXER"
-                       FontSize="11"
+            <!-- Header -->
+            <VerticalStackLayout Spacing="4" Margin="0,8,0,0">
+                <Label x:Name="PresetNameLabel"
+                       Text="Sound Editor"
+                       FontSize="24"
                        FontAttributes="Bold"
-                       TextColor="#FFFFFF50"
-                       HorizontalOptions="Center"
-                       CharacterSpacing="3" />
-
-                <!-- 4 Sliders: Tone, Space, Bright, Character -->
-                <Grid ColumnDefinitions="*,*,*,*"
-                      ColumnSpacing="0"
-                      HorizontalOptions="Center">
-
-                    <!-- Tone (maps to Bass) - Blue -->
-                    <controls:NeonVerticalSlider
-                        x:Name="ToneSlider"
-                        Grid.Column="0"
-                        Minimum="-10"
-                        Maximum="10"
-                        Value="0"
-                        AccentColor="#4FC3F7"
-                        ParameterName="Tone"
-                        ValueChanged="OnControlChanged" />
-
-                    <!-- Space (maps to Mid) - Cyan -->
-                    <controls:NeonVerticalSlider
-                        x:Name="SpaceSlider"
-                        Grid.Column="1"
-                        Minimum="-10"
-                        Maximum="10"
-                        Value="0"
-                        AccentColor="#00E5FF"
-                        ParameterName="Space"
-                        ValueChanged="OnControlChanged" />
-
-                    <!-- Bright (maps to Treble) - Pink -->
-                    <controls:NeonVerticalSlider
-                        x:Name="BrightSlider"
-                        Grid.Column="2"
-                        Minimum="-10"
-                        Maximum="10"
-                        Value="0"
-                        AccentColor="#FF6EC7"
-                        ParameterName="Bright"
-                        ValueChanged="OnControlChanged" />
-
-                    <!-- Character (maps to Distortion) - Amber -->
-                    <controls:NeonVerticalSlider
-                        x:Name="CharacterSlider"
-                        Grid.Column="3"
-                        Minimum="0"
-                        Maximum="10"
-                        Value="0"
-                        AccentColor="#FFB347"
-                        ParameterName="Character"
-                        ValueChanged="OnControlChanged" />
-                </Grid>
+                       TextColor="White"
+                       HorizontalOptions="Center" />
+                <Label x:Name="PresetSubtitle"
+                       Text="Adjust the sound to your liking"
+                       FontSize="12"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center" />
             </VerticalStackLayout>
-        </Border>
 
-        <!-- Save As Button (hidden until modified) -->
-        <Border x:Name="SaveAsButton"
-                StrokeThickness="0"
-                BackgroundColor="Transparent"
-                IsVisible="False"
-                Margin="0,2,0,0">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="20" />
-            </Border.StrokeShape>
-            <Border.Background>
-                <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
-                    <GradientStop Color="#7B6BFF" Offset="0.0" />
-                    <GradientStop Color="#5B8FFF" Offset="1.0" />
-                </LinearGradientBrush>
-            </Border.Background>
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnSaveAsClicked" />
-            </Border.GestureRecognizers>
-            <Label Text="Save As Custom Sound"
-                   FontSize="15"
-                   FontAttributes="Bold"
-                   TextColor="White"
-                   HorizontalOptions="Center"
-                   Padding="0,14" />
-        </Border>
+            <!-- Mixer Panel -->
+            <Border BackgroundColor="#0D0D1A"
+                    Stroke="#FFFFFF14"
+                    StrokeThickness="1"
+                    Padding="8,12"
+                    Margin="0,4,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
 
-        <!-- Reset Button (hidden until modified) -->
-        <Border x:Name="ResetButton"
-                Stroke="#FF525280"
-                StrokeThickness="1.5"
-                BackgroundColor="Transparent"
-                IsVisible="False">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnResetClicked" />
-            </Border.GestureRecognizers>
-            <Label Text="Reset to Default"
-                   FontSize="13"
-                   FontAttributes="Bold"
-                   TextColor="#FF5252"
-                   HorizontalOptions="Center"
-                   Padding="0,10" />
-        </Border>
+                <VerticalStackLayout Spacing="8">
+                    <Label Text="SOUND MIXER"
+                           FontSize="11"
+                           FontAttributes="Bold"
+                           TextColor="#FFFFFF50"
+                           HorizontalOptions="Center"
+                           CharacterSpacing="3" />
 
-        <!-- My Saved Sounds -->
-        <Border Stroke="#7B6BFF"
-                StrokeThickness="2"
-                BackgroundColor="Transparent"
-                Margin="0,2,0,0">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="16" />
-            </Border.StrokeShape>
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnSavedSoundsClicked" />
-            </Border.GestureRecognizers>
-            <Label Text="My Saved Sounds"
-                   FontSize="13"
-                   FontAttributes="Bold"
-                   TextColor="#7B6BFF"
-                   HorizontalOptions="Center"
-                   Padding="0,10" />
-        </Border>
+                    <!-- 4 Sliders: Tone, Space, Bright, Character -->
+                    <Grid ColumnDefinitions="*,*,*,*"
+                          ColumnSpacing="0"
+                          HorizontalOptions="Center">
 
-        <!-- Back -->
-        <Border Stroke="#8E8E93"
-                StrokeThickness="2"
-                BackgroundColor="Transparent"
-                Margin="0,2,0,8">
-            <Border.StrokeShape>
-                <RoundRectangle CornerRadius="20" />
-            </Border.StrokeShape>
-            <Border.GestureRecognizers>
-                <TapGestureRecognizer Tapped="OnBackClicked" />
-            </Border.GestureRecognizers>
-            <Label Text="Back"
-                   FontSize="16"
-                   FontAttributes="Bold"
-                   TextColor="#8E8E93"
-                   HorizontalOptions="Center"
-                   Padding="0,14" />
-        </Border>
+                        <!-- Tone (maps to Bass) - Blue -->
+                        <controls:NeonVerticalSlider
+                            x:Name="ToneSlider"
+                            Grid.Column="0"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            AccentColor="#4FC3F7"
+                            ParameterName="Tone"
+                            ValueChanged="OnControlChanged" />
 
-    </VerticalStackLayout>
+                        <!-- Space (maps to Mid) - Cyan -->
+                        <controls:NeonVerticalSlider
+                            x:Name="SpaceSlider"
+                            Grid.Column="1"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            AccentColor="#00E5FF"
+                            ParameterName="Space"
+                            ValueChanged="OnControlChanged" />
+
+                        <!-- Bright (maps to Treble) - Pink -->
+                        <controls:NeonVerticalSlider
+                            x:Name="BrightSlider"
+                            Grid.Column="2"
+                            Minimum="-10"
+                            Maximum="10"
+                            Value="0"
+                            AccentColor="#FF6EC7"
+                            ParameterName="Bright"
+                            ValueChanged="OnControlChanged" />
+
+                        <!-- Character (maps to Distortion) - Amber -->
+                        <controls:NeonVerticalSlider
+                            x:Name="CharacterSlider"
+                            Grid.Column="3"
+                            Minimum="0"
+                            Maximum="10"
+                            Value="0"
+                            AccentColor="#FFB347"
+                            ParameterName="Character"
+                            ValueChanged="OnControlChanged" />
+                    </Grid>
+                </VerticalStackLayout>
+            </Border>
+
+            <!-- Save As Button (hidden until modified) -->
+            <Border x:Name="SaveAsButton"
+                    StrokeThickness="0"
+                    BackgroundColor="Transparent"
+                    IsVisible="False"
+                    Margin="0,2,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.Background>
+                    <LinearGradientBrush StartPoint="0,0" EndPoint="1,1">
+                        <GradientStop Color="#7B6BFF" Offset="0.0" />
+                        <GradientStop Color="#5B8FFF" Offset="1.0" />
+                    </LinearGradientBrush>
+                </Border.Background>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSaveAsClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="Save As Custom Sound"
+                       FontSize="15"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       HorizontalOptions="Center"
+                       Padding="0,14" />
+            </Border>
+
+            <!-- Reset Button (hidden until modified) -->
+            <Border x:Name="ResetButton"
+                    Stroke="#FF525280"
+                    StrokeThickness="1.5"
+                    BackgroundColor="Transparent"
+                    IsVisible="False">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnResetClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="Reset to Default"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="#FF5252"
+                       HorizontalOptions="Center"
+                       Padding="0,10" />
+            </Border>
+
+            <!-- My Saved Sounds -->
+            <Border Stroke="#7B6BFF"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,2,0,0">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="16" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnSavedSoundsClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="My Saved Sounds"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="#7B6BFF"
+                       HorizontalOptions="Center"
+                       Padding="0,10" />
+            </Border>
+
+            <!-- Back -->
+            <Border Stroke="#8E8E93"
+                    StrokeThickness="2"
+                    BackgroundColor="Transparent"
+                    Margin="0,2,0,8">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="20" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnBackClicked" />
+                </Border.GestureRecognizers>
+                <Label Text="Back"
+                       FontSize="16"
+                       FontAttributes="Bold"
+                       TextColor="#8E8E93"
+                       HorizontalOptions="Center"
+                       Padding="0,14" />
+            </Border>
+
+        </VerticalStackLayout>
+    </Grid>
 </ContentPage>

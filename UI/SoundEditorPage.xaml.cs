@@ -41,58 +41,25 @@ public partial class SoundEditorPage : ContentPage
 		_isModified = false;
 		SaveAsButton.IsVisible = false;
 		ResetButton.IsVisible = false;
+
+		StopBar.Attach(_audioService);
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+		StopBar.Detach();
 	}
 
 	private void LoadPresetDefaults()
 	{
-		switch (_presetName.ToLowerInvariant())
-		{
-			case "robot":
-				_defaultTone = -2f; _defaultSpace = -1f;
-				_defaultBright = 3f; _defaultCharacter = 7f;
-				break;
-			case "megaphone":
-				_defaultTone = -3f; _defaultSpace = 2f;
-				_defaultBright = 5f; _defaultCharacter = 6f;
-				break;
-			case "stadium":
-				_defaultTone = 1f; _defaultSpace = 8f;
-				_defaultBright = 2f; _defaultCharacter = 1f;
-				break;
-			case "deepvoice":
-			case "deep voice":
-				_defaultTone = 6f; _defaultSpace = 1f;
-				_defaultBright = -3f; _defaultCharacter = 2f;
-				break;
-			case "helium":
-			case "chipmunk":
-				_defaultTone = -4f; _defaultSpace = 0f;
-				_defaultBright = 7f; _defaultCharacter = 1f;
-				break;
-			case "anime":
-			case "animevoice":
-			case "anime voice":
-				_defaultTone = -1f; _defaultSpace = 1f;
-				_defaultBright = 6f; _defaultCharacter = 2f;
-				break;
-			case "podcast":
-				_defaultTone = 2f; _defaultSpace = 1f;
-				_defaultBright = 3f; _defaultCharacter = 0f;
-				break;
-			case "villain":
-				_defaultTone = 5f; _defaultSpace = 3f;
-				_defaultBright = -2f; _defaultCharacter = 5f;
-				break;
-			case "grumpycat":
-			case "grumpy cat":
-				_defaultTone = 3f; _defaultSpace = -2f;
-				_defaultBright = -1f; _defaultCharacter = 4f;
-				break;
-			default:
-				_defaultTone = 0f; _defaultSpace = 0f;
-				_defaultBright = 0f; _defaultCharacter = 0f;
-				break;
-		}
+		// Default sliders are always 0 (neutral) for all presets.
+		// Each preset's Configure() already defines its own sound via the effect chain.
+		// The sliders represent user tweaks on top of the preset, so 0 = pure preset sound.
+		_defaultTone = 0f;
+		_defaultSpace = 0f;
+		_defaultBright = 0f;
+		_defaultCharacter = 0f;
 	}
 
 	private void ApplyDefaultsToUi()
@@ -111,6 +78,12 @@ public partial class SoundEditorPage : ContentPage
 	/// </summary>
 	public void LoadCustomValues(float bass, float mid, float treble, float distortion)
 	{
+		// The saved values become the defaults for this editing session
+		_defaultTone = bass;
+		_defaultSpace = mid;
+		_defaultBright = treble;
+		_defaultCharacter = distortion;
+
 		_isUpdating = true;
 		ToneSlider.Value = bass;
 		SpaceSlider.Value = mid;
@@ -120,9 +93,10 @@ public partial class SoundEditorPage : ContentPage
 
 		ApplyCurrentValuesToAudio();
 
-		_isModified = true;
-		SaveAsButton.IsVisible = true;
-		ResetButton.IsVisible = true;
+		// Starting from saved values - not modified yet
+		_isModified = false;
+		SaveAsButton.IsVisible = false;
+		ResetButton.IsVisible = false;
 	}
 
 	private void ApplyCurrentValuesToAudio()
@@ -132,7 +106,8 @@ public partial class SoundEditorPage : ContentPage
 		float bright = (float)BrightSlider.Value;
 		float character = (float)CharacterSlider.Value;
 
-		_audioService.SetMasterEQ(tone, space, bright);
+		// Scale slider values (±10) to dB range (±12) for audible impact without distortion
+		_audioService.SetMasterEQ(tone * 1.2f, space * 1.2f, bright * 1.2f);
 		_audioService.SetMasterDistortion(character / 10f);
 	}
 
@@ -186,6 +161,9 @@ public partial class SoundEditorPage : ContentPage
 
 	private void OnResetClicked(object? sender, EventArgs e)
 	{
+		// Re-apply the base preset to reset the audio engine to its pure sound
+		_audioService.SetEffect(_basePresetName);
+
 		ApplyDefaultsToUi();
 		ApplyCurrentValuesToAudio();
 

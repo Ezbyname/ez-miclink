@@ -11,6 +11,13 @@ public partial class SavedSoundsPage : ContentPage
 	{
 		InitializeComponent();
 		_audioService = audioService;
+		StopBar.Attach(_audioService);
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+		StopBar.Detach();
 	}
 
 	protected override void OnAppearing()

@@ -24,6 +24,13 @@ public partial class PremiumVoicesPage : ContentPage
 	{
 		InitializeComponent();
 		_audioService = audioService;
+		StopBar.Attach(_audioService);
+	}
+
+	protected override void OnDisappearing()
+	{
+		base.OnDisappearing();
+		StopBar.Detach();
 	}
 
 	private async void OnVoiceSelected(object? sender, TappedEventArgs e)

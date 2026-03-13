@@ -1,0 +1,76 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<ContentView xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="BluetoothMicrophoneApp.Components.FloatingStopBar"
+             x:Name="StopBarRoot"
+             IsVisible="False"
+             InputTransparent="False">
+
+    <Border Margin="16,8"
+            Padding="12,8"
+            StrokeThickness="1"
+            BackgroundColor="#CC0A0E27"
+            InputTransparent="False">
+
+        <Border.Stroke>
+            <LinearGradientBrush StartPoint="0,0" EndPoint="1,0">
+                <GradientStop Color="#FF5252" Offset="0.0" />
+                <GradientStop Color="#FF1744" Offset="1.0" />
+            </LinearGradientBrush>
+        </Border.Stroke>
+
+        <Border.StrokeShape>
+            <RoundRectangle CornerRadius="14" />
+        </Border.StrokeShape>
+
+        <Border.Shadow>
+            <Shadow Brush="#FF5252"
+                    Offset="0,2"
+                    Radius="10"
+                    Opacity="0.4" />
+        </Border.Shadow>
+
+        <Grid ColumnDefinitions="Auto,*,Auto" ColumnSpacing="10">
+
+            <!-- LIVE indicator -->
+            <Border Grid.Column="0"
+                    BackgroundColor="#FF1744"
+                    StrokeThickness="0"
+                    WidthRequest="8"
+                    HeightRequest="8"
+                    VerticalOptions="Center">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="4" />
+                </Border.StrokeShape>
+            </Border>
+
+            <Label Grid.Column="1"
+                   Text="LIVE"
+                   FontSize="13"
+                   FontAttributes="Bold"
+                   TextColor="#FF5252"
+                   VerticalOptions="Center"
+                   CharacterSpacing="2" />
+
+            <!-- Stop button -->
+            <Border Grid.Column="2"
+                    BackgroundColor="#FF1744"
+                    StrokeThickness="0"
+                    Padding="14,6"
+                    InputTransparent="False">
+                <Border.StrokeShape>
+                    <RoundRectangle CornerRadius="10" />
+                </Border.StrokeShape>
+                <Border.GestureRecognizers>
+                    <TapGestureRecognizer Tapped="OnStopTapped" />
+                </Border.GestureRecognizers>
+                <Label Text="&#x25A0; Stop"
+                       FontSize="13"
+                       FontAttributes="Bold"
+                       TextColor="White"
+                       VerticalOptions="Center" />
+            </Border>
+
+        </Grid>
+    </Border>
+</ContentView>

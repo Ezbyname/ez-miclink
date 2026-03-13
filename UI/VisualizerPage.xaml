@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8" ?>
 <ContentPage xmlns="http://schemas.microsoft.com/dotnet/2021/maui"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:controls="clr-namespace:BluetoothMicrophoneApp.Components"
              x:Class="BluetoothMicrophoneApp.UI.VisualizerPage"
              Title="Live Visualizer">
 
@@ -13,7 +14,12 @@
         </LinearGradientBrush>
     </ContentPage.Background>
 
-    <Grid Padding="20" RowDefinitions="Auto,*,Auto">
+    <Grid Padding="0" RowDefinitions="Auto,*">
+
+        <!-- Floating Stop Bar -->
+        <controls:FloatingStopBar x:Name="StopBar" Grid.Row="0" />
+
+    <Grid Grid.Row="1" Padding="20" RowDefinitions="Auto,*,Auto">
 
         <!-- Header -->
         <VerticalStackLayout Grid.Row="0" Spacing="10" Margin="0,20,0,30">
@@ -183,5 +189,6 @@
             </Border>
         </Grid>
 
+    </Grid>
     </Grid>
 </ContentPage>
